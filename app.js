@@ -371,15 +371,22 @@ function createOrderCard(order) {
     return orderCard;
 }
 
-// Filter orders by status
+// Filter orders based on tab
 function filterOrdersByStatus(status) {
     if (status === 'all') {
         return orders;
     }
     
     return orders.filter(order => {
-        const orderStatus = order.data().status?.toLowerCase() || '';
-        return orderStatus === status.toLowerCase();
+        const orderData = order.data();
+        const orderStatus = (orderData.status || '').toLowerCase();
+        
+        // Special case: 'pending' orders should appear in 'preparing' tab
+        if (status === 'preparing' && orderStatus === 'pending') {
+            return true;
+        }
+        
+        return orderStatus === status;
     });
 }
 
