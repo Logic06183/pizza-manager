@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍕 Pizza Manager</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-content">
+                <h1>🍕 Pizza Manager</h1>
+                <div class="toggle-container">
+                    <span>Live Updates</span>
+                    <label class="switch">
+                        <input type="checkbox" id="realtimeToggle" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-status="all">All Orders</button>
+                <button class="tab-btn" data-status="preparing">Preparing</button>
+                <button class="tab-btn" data-status="ready">Ready</button>
+                <button class="tab-btn" data-status="done">Completed</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="refresh-banner">
+                <button id="refreshButton">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                        <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                    </svg>
+                    Refresh
+                </button>
+                <span id="lastUpdated"></span>
+            </div>
+
+            <div id="ordersContainer" class="orders-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading pizza orders...</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Pizza Manager v1.0 • Made with ❤️</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
