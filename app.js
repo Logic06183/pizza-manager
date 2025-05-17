@@ -183,7 +183,7 @@ function createOrderCard(order) {
     orderCard.appendChild(orderHeader);
     orderCard.appendChild(customerInfo);
     
-    // Add special instructions if any
+    // Add special instructions indicator if any
     if (hasSpecialInstructions) {
         const specialInstructions = document.createElement('div');
         specialInstructions.className = 'special-instructions';
@@ -308,6 +308,14 @@ function createOrderCard(order) {
     
     pizzaDetails.appendChild(orderStatusInfo);
     
+    // Add order-level special instructions if any exist
+    if (data.specialInstructions && typeof data.specialInstructions === 'string' && data.specialInstructions.trim() !== '') {
+        const orderSpecialInstructions = document.createElement('div');
+        orderSpecialInstructions.className = 'order-special-instructions';
+        orderSpecialInstructions.innerHTML = `<h4>Order Special Instructions</h4><p>${data.specialInstructions}</p>`;
+        pizzaDetails.appendChild(orderSpecialInstructions);
+    }
+
     // Add pizzas section
     if (data.pizzas && data.pizzas.length > 0) {
         const pizzasContainer = document.createElement('div');
@@ -324,8 +332,16 @@ function createOrderCard(order) {
             
             const pizzaName = document.createElement('div');
             pizzaName.className = 'pizza-name';
-            pizzaName.innerHTML = `<strong>${index + 1}. ${pizza.name || 'Pizza'}</strong> (${pizza.size || 'Regular'}) - ${formatCurrency(pizza.price)}`;
+            pizzaName.innerHTML = `<strong>${index + 1}. ${pizza.pizzaType || 'Pizza'}</strong> ${formatCurrency(pizza.totalPrice || 0)}`;
             pizzaItem.appendChild(pizzaName);
+            
+            // Display special instructions for this pizza if any
+            if (pizza.specialInstructions && pizza.specialInstructions.trim() !== '') {
+                const instructionsDiv = document.createElement('div');
+                instructionsDiv.className = 'pizza-special-instructions';
+                instructionsDiv.innerHTML = `<strong>Special Instructions:</strong> ${pizza.specialInstructions}`;
+                pizzaItem.appendChild(instructionsDiv);
+            }
             
             if (pizza.toppings && pizza.toppings.length > 0) {
                 const toppings = document.createElement('div');
