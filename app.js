@@ -206,7 +206,12 @@ function createOrderCard(order) {
         data.pizzas.forEach(pizza => {
             const pizzaItem = document.createElement('li');
             pizzaItem.style.marginBottom = '0.25rem';
-            pizzaItem.textContent = `${pizza.name || 'Pizza'} (${pizza.size || 'Regular'})`;
+            
+            // Use pizzaType for the pizza name as shown in the database structure
+            const pizzaName = pizza.pizzaType || 'Pizza';
+            const pizzaQuantity = pizza.quantity > 1 ? `(${pizza.quantity}x)` : '';
+            
+            pizzaItem.textContent = `${pizzaName} ${pizzaQuantity}`;
             pizzaList.appendChild(pizzaItem);
         });
         
