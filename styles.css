@@ -65,6 +65,13 @@ h1 {
     font-size: 0.8rem;
 }
 
+.toggle-c.order-status-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
 .switch {
     position: relative;
     display: inline-block;

@@ -6,6 +6,8 @@
     <title>🍕 Pizza Manager</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍕</text></svg>">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="stats-styles.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
@@ -22,12 +24,13 @@
                     </label>
                 </div>
             </div>
-            <div class="tabs">
-                <button class="tab-btn active" data-status="all">All Orders</button>
-                <button class="tab-btn" data-status="preparing">Preparing</button>
-                <button class="tab-btn" data-status="ready">Ready</button>
-                <button class="tab-btn" data-status="done">Completed</button>
-            </div>
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="all">All Orders</button>
+                <button class="tab-btn" data-tab="preparing">Preparing</button>
+                <button class="tab-btn" data-tab="ready">Ready</button>
+                <button class="tab-btn" data-tab="done">Completed</button>
+                <button class="tab-btn" data-tab="stats">📊 Stats</button>
+            </nav>
         </header>
 
         <main>

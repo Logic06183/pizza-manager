@@ -406,9 +406,15 @@ function filterOrdersByStatus(status) {
     });
 }
 
-// Display orders in the container
+// Display orders or statistics in the container
 function displayOrders(filteredOrders) {
     ordersContainer.innerHTML = '';
+    
+    // If stats tab is active, show statistics instead of orders
+    if (currentTab === 'stats') {
+        displayStatistics(orders);
+        return;
+    }
     
     if (filteredOrders.length === 0) {
         const noOrders = document.createElement('div');
@@ -424,6 +430,215 @@ function displayOrders(filteredOrders) {
     });
     
     updateLastUpdated();
+}
+
+// Display statistics for today's orders
+function displayStatistics(allOrders) {
+    // Create stats container
+    const statsContainer = document.createElement('div');
+    statsContainer.className = 'stats-container';
+    
+    // Get today's date (start of day in local timezone)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Filter orders for today only
+    const todaysOrders = allOrders.filter(order => {
+        const data = order.data();
+        const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
+            new Date(data.orderTime) : 
+            (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
+        
+        if (!orderTime) return false;
+        
+        // Check if the order is from today
+        const orderDate = new Date(orderTime);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === today.getTime();
+    });
+    
+    // Calculate total pizzas sold today
+    let totalPizzas = 0;
+    let totalRevenue = 0;
+    let totalLateOrders = 0;
+    let statusCounts = {
+        'pending': 0,
+        'preparing': 0,
+        'ready': 0,
+        'done': 0,
+        'delivered': 0,
+        'cancelled': 0
+    };
+    
+    // Different pizza types sold today
+    let pizzaTypes = {};
+    
+    todaysOrders.forEach(order => {
+        const data = order.data();
+        
+        // Count by status
+        const status = (data.status || '').toLowerCase();
+        if (statusCounts.hasOwnProperty(status)) {
+            statusCounts[status]++;
+        }
+        
+        // Add to total revenue
+        totalRevenue += Number(data.totalAmount) || 0;
+        
+        // Check if order was/is late
+        if (data.dueTime && data.orderTime) {
+            const dueTime = typeof data.dueTime === 'string' ? 
+                new Date(data.dueTime) : 
+                (data.dueTime.toDate ? data.dueTime.toDate() : new Date(data.dueTime));
+            
+            const orderTime = typeof data.orderTime === 'string' ? 
+                new Date(data.orderTime) : 
+                (data.orderTime.toDate ? data.orderTime.toDate() : new Date(data.orderTime));
+            
+            const now = new Date();
+            const prepTime = data.prepTimeMinutes || 0;
+            
+            // If status is not done/delivered and current time > due time, it's late
+            if (status !== 'done' && status !== 'delivered' && now > dueTime) {
+                totalLateOrders++;
+            }
+        }
+        
+        // Count pizzas in this order
+        if (data.pizzas && Array.isArray(data.pizzas)) {
+            data.pizzas.forEach(pizza => {
+                // Add quantity (or 1 if quantity not specified)
+                const quantity = pizza.quantity || 1;
+                totalPizzas += quantity;
+                
+                // Count by pizza type
+                const pizzaType = pizza.pizzaType || 'Unknown';
+                if (!pizzaTypes[pizzaType]) pizzaTypes[pizzaType] = 0;
+                pizzaTypes[pizzaType] += quantity;
+            });
+        }
+    });
+    
+    // Create today's date display
+    const dateDisplay = document.createElement('div');
+    dateDisplay.className = 'stats-date';
+    dateDisplay.textContent = today.toLocaleDateString(undefined, { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+    });
+    statsContainer.appendChild(dateDisplay);
+    
+    // Create summary cards
+    const summaryCardsContainer = document.createElement('div');
+    summaryCardsContainer.className = 'stats-summary-cards';
+    
+    // Orders card
+    const ordersCard = createStatCard('Orders Today', todaysOrders.length, 'receipt');
+    summaryCardsContainer.appendChild(ordersCard);
+    
+    // Pizzas card
+    const pizzasCard = createStatCard('Pizzas Sold', totalPizzas, 'local_pizza');
+    summaryCardsContainer.appendChild(pizzasCard);
+    
+    // Revenue card
+    const revenueCard = createStatCard('Total Revenue', formatCurrency(totalRevenue), 'payments');
+    summaryCardsContainer.appendChild(revenueCard);
+    
+    // Late orders card
+    const lateCard = createStatCard('Late Orders', totalLateOrders, 'schedule', totalLateOrders > 0 ? 'stats-card-warning' : '');
+    summaryCardsContainer.appendChild(lateCard);
+    
+    statsContainer.appendChild(summaryCardsContainer);
+    
+    // Create status breakdown
+    const statusBreakdown = document.createElement('div');
+    statusBreakdown.className = 'stats-breakdown';
+    statusBreakdown.innerHTML = '<h3>Orders by Status</h3>';
+    
+    const statusTable = document.createElement('div');
+    statusTable.className = 'stats-table';
+    
+    for (const [status, count] of Object.entries(statusCounts)) {
+        if (count > 0) {
+            const statusRow = document.createElement('div');
+            statusRow.className = 'stats-table-row';
+            
+            const statusName = document.createElement('div');
+            statusName.className = 'stats-table-cell';
+            statusName.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            
+            const statusCount = document.createElement('div');
+            statusCount.className = 'stats-table-cell stats-table-count';
+            statusCount.textContent = count;
+            
+            statusRow.appendChild(statusName);
+            statusRow.appendChild(statusCount);
+            statusTable.appendChild(statusRow);
+        }
+    }
+    
+    statusBreakdown.appendChild(statusTable);
+    statsContainer.appendChild(statusBreakdown);
+    
+    // Create pizza types breakdown if we have any pizzas
+    if (Object.keys(pizzaTypes).length > 0) {
+        const pizzaBreakdown = document.createElement('div');
+        pizzaBreakdown.className = 'stats-breakdown';
+        pizzaBreakdown.innerHTML = '<h3>Pizzas by Type</h3>';
+        
+        const pizzaTable = document.createElement('div');
+        pizzaTable.className = 'stats-table';
+        
+        // Sort pizza types by quantity (most popular first)
+        const sortedPizzaTypes = Object.entries(pizzaTypes)
+            .sort((a, b) => b[1] - a[1]);
+        
+        for (const [pizzaType, count] of sortedPizzaTypes) {
+            const pizzaRow = document.createElement('div');
+            pizzaRow.className = 'stats-table-row';
+            
+            const pizzaName = document.createElement('div');
+            pizzaName.className = 'stats-table-cell';
+            pizzaName.textContent = pizzaType;
+            
+            const pizzaCount = document.createElement('div');
+            pizzaCount.className = 'stats-table-cell stats-table-count';
+            pizzaCount.textContent = count;
+            
+            pizzaRow.appendChild(pizzaName);
+            pizzaRow.appendChild(pizzaCount);
+            pizzaTable.appendChild(pizzaRow);
+        }
+        
+        pizzaBreakdown.appendChild(pizzaTable);
+        statsContainer.appendChild(pizzaBreakdown);
+    }
+    
+    ordersContainer.appendChild(statsContainer);
+    updateLastUpdated();
+}
+
+// Helper function to create a statistics card
+function createStatCard(title, value, icon, extraClass = '') {
+    const card = document.createElement('div');
+    card.className = `stats-card ${extraClass}`;
+    
+    const iconElement = document.createElement('span');
+    iconElement.className = 'material-icons stats-card-icon';
+    iconElement.textContent = icon; // Using material icons
+    
+    const valueElement = document.createElement('div');
+    valueElement.className = 'stats-card-value';
+    valueElement.textContent = value;
+    
+    const titleElement = document.createElement('div');
+    titleElement.className = 'stats-card-title';
+    titleElement.textContent = title;
+    
+    card.appendChild(iconElement);
+    card.appendChild(valueElement);
+    card.appendChild(titleElement);
+    
+    return card;
 }
 
 // Fetch orders from Firestore
@@ -509,16 +724,17 @@ refreshButton.addEventListener('click', function() {
     }
 });
 
+// Tab switching
 tabButtons.forEach(button => {
     button.addEventListener('click', () => {
-        // Update active tab
+        // Remove active class from all buttons
         tabButtons.forEach(btn => btn.classList.remove('active'));
+        
+        // Add active class to clicked button
         button.classList.add('active');
         
-        // Update current tab
-        currentTab = button.dataset.status;
-        
-        // Filter and display orders
+        // Update current tab and filter orders
+        currentTab = button.dataset.tab;
         const filteredOrders = filterOrdersByStatus(currentTab);
         displayOrders(filteredOrders);
     });
