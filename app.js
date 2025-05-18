@@ -442,7 +442,7 @@ function displayStatistics(allOrders) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Filter orders for today only
+    // Filter orders for today only - with more flexible matching for timezone differences
     const todaysOrders = allOrders.filter(order => {
         const data = order.data();
         const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
@@ -451,10 +451,18 @@ function displayStatistics(allOrders) {
         
         if (!orderTime) return false;
         
-        // Check if the order is from today
+        // More flexible matching to account for timezone differences
+        // Match orders from the last 24 hours or any order from today's date in local time
         const orderDate = new Date(orderTime);
-        orderDate.setHours(0, 0, 0, 0);
-        return orderDate.getTime() === today.getTime();
+        const now = new Date();
+        const diffHours = (now - orderDate) / (1000 * 60 * 60);
+        
+        // Check if same day (local time) or within last 24 hours
+        const isSameDay = orderDate.getDate() === now.getDate() && 
+                          orderDate.getMonth() === now.getMonth() && 
+                          orderDate.getFullYear() === now.getFullYear();
+        
+        return isSameDay || diffHours < 24;
     });
     
     // Calculate total pizzas sold today
@@ -652,7 +660,7 @@ function fetchOrders() {
     
     const query = db.collection('orders')
         .orderBy('orderTime', 'desc')
-        .limit(20);
+        .limit(100); // Increased limit to 100 orders
     
     query.get().then(snapshot => {
         orders = snapshot.docs;
@@ -677,7 +685,7 @@ function setupRealTimeListener() {
     
     const query = db.collection('orders')
         .orderBy('orderTime', 'desc')
-        .limit(20);
+        .limit(100); // Increased limit to 100 orders
     
     unsubscribe = query.onSnapshot(snapshot => {
         orders = snapshot.docs;
