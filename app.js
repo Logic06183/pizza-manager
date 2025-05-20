@@ -24,20 +24,95 @@ let currentTab = 'all';
 let unsubscribe = null;
 let orders = [];
 
-// Pizza ingredients mapping for John Dough's pizzas
+// Pizza ingredients mapping for John Dough's pizzas with quantities per pizza
 const pizzaIngredients = {
-    "The Champ Pizza": ["pepperoni", "spring onions", "parmesan", "mozzarella", "pizza sauce"],
-    "Pig in Paradise": ["bacon", "caramelised pineapple", "mozzarella", "pizza sauce"],
-    "Margie Pizza": ["fresh mozzarella", "basil", "pizza sauce"],
-    "Mushroom Cloud Pizza": ["mushrooms", "goat's cheese", "sunflower seeds", "garlic", "caramelised onions", "chilli oil", "pizza sauce"],
-    "Spud Pizza": ["potato slices", "rosemary", "salt flakes", "caramelised onion", "chilli oil", "parmesan"],
-    "Mish-Mash Pizza": ["parma ham", "fig preserve", "goat's cheese", "rocket", "pizza sauce"],
-    "Lekker'izza": ["bacon", "chorizo sausage", "peppadews", "feta", "fresh herbs", "pizza sauce"],
-    "Vegan Harvest Pizza": ["mushrooms", "baby marrow", "kalamata olives", "sundried tomatoes", "seasonal herbs", "hummus", "olive oil"],
-    "Poppa's Pizza": ["anchovies", "olives", "fresh mozzarella", "basil", "pizza sauce"],
-    "The Zesty Zucchini": ["courgette", "blue cheese", "parmesan", "fresh mozzarella"],
-    "Chick Tick Boom": ["spicy chicken tikka", "peppadews", "fresh coriander", "mozzarella", "pizza sauce"],
-    "Artichoke & Ham": ["ham", "mushrooms", "artichoke leaves", "olives", "mozzarella", "pizza sauce"]
+    "The Champ Pizza": [
+        {name: "pepperoni", amount: 50, unit: "g"},
+        {name: "spring onions", amount: 15, unit: "g"},
+        {name: "parmesan", amount: 20, unit: "g"},
+        {name: "mozzarella", amount: 100, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "Pig in Paradise": [
+        {name: "bacon", amount: 40, unit: "g"},
+        {name: "caramelised pineapple", amount: 60, unit: "g"},
+        {name: "mozzarella", amount: 100, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "Margie Pizza": [
+        {name: "fresh mozzarella", amount: 120, unit: "g"},
+        {name: "basil", amount: 10, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "Mushroom Cloud Pizza": [
+        {name: "mushrooms", amount: 80, unit: "g"},
+        {name: "goat's cheese", amount: 50, unit: "g"},
+        {name: "sunflower seeds", amount: 15, unit: "g"},
+        {name: "garlic", amount: 5, unit: "g"},
+        {name: "caramelised onions", amount: 40, unit: "g"},
+        {name: "chilli oil", amount: 10, unit: "ml"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "Spud Pizza": [
+        {name: "potato slices", amount: 100, unit: "g"},
+        {name: "rosemary", amount: 5, unit: "g"},
+        {name: "salt flakes", amount: 3, unit: "g"},
+        {name: "caramelised onion", amount: 40, unit: "g"},
+        {name: "chilli oil", amount: 10, unit: "ml"},
+        {name: "parmesan", amount: 20, unit: "g"}
+    ],
+    "Mish-Mash Pizza": [
+        {name: "parma ham", amount: 40, unit: "g"},
+        {name: "fig preserve", amount: 30, unit: "g"},
+        {name: "goat's cheese", amount: 50, unit: "g"},
+        {name: "rocket", amount: 20, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "Lekker'izza": [
+        {name: "bacon", amount: 30, unit: "g"},
+        {name: "chorizo sausage", amount: 40, unit: "g"},
+        {name: "peppadews", amount: 30, unit: "g"},
+        {name: "feta", amount: 40, unit: "g"},
+        {name: "fresh herbs", amount: 5, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "Vegan Harvest Pizza": [
+        {name: "mushrooms", amount: 70, unit: "g"},
+        {name: "baby marrow", amount: 50, unit: "g"},
+        {name: "kalamata olives", amount: 30, unit: "g"},
+        {name: "sundried tomatoes", amount: 25, unit: "g"},
+        {name: "seasonal herbs", amount: 5, unit: "g"},
+        {name: "hummus", amount: 30, unit: "g"},
+        {name: "olive oil", amount: 15, unit: "ml"}
+    ],
+    "Poppa's Pizza": [
+        {name: "anchovies", amount: 30, unit: "g"},
+        {name: "olives", amount: 30, unit: "g"},
+        {name: "fresh mozzarella", amount: 120, unit: "g"},
+        {name: "basil", amount: 10, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "The Zesty Zucchini": [
+        {name: "courgette", amount: 80, unit: "g"},
+        {name: "blue cheese", amount: 40, unit: "g"},
+        {name: "parmesan", amount: 20, unit: "g"},
+        {name: "fresh mozzarella", amount: 100, unit: "g"}
+    ],
+    "Chick Tick Boom": [
+        {name: "spicy chicken tikka", amount: 70, unit: "g"},
+        {name: "peppadews", amount: 30, unit: "g"},
+        {name: "fresh coriander", amount: 5, unit: "g"},
+        {name: "mozzarella", amount: 100, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ],
+    "Artichoke & Ham": [
+        {name: "ham", amount: 50, unit: "g"},
+        {name: "mushrooms", amount: 50, unit: "g"},
+        {name: "artichoke leaves", amount: 40, unit: "g"},
+        {name: "olives", amount: 30, unit: "g"},
+        {name: "mozzarella", amount: 100, unit: "g"},
+        {name: "pizza sauce", amount: 80, unit: "ml"}
+    ]
 };
 
 // Format date function
@@ -546,8 +621,15 @@ function displayStatistics(allOrders) {
                 // Track ingredients usage based on pizza type
                 if (pizzaIngredients[pizzaType]) {
                     pizzaIngredients[pizzaType].forEach(ingredient => {
-                        if (!ingredientsUsage[ingredient]) ingredientsUsage[ingredient] = 0;
-                        ingredientsUsage[ingredient] += quantity;
+                        const ingredientKey = `${ingredient.name}|${ingredient.unit}`;
+                        if (!ingredientsUsage[ingredientKey]) {
+                            ingredientsUsage[ingredientKey] = {
+                                name: ingredient.name,
+                                amount: 0,
+                                unit: ingredient.unit
+                            };
+                        }
+                        ingredientsUsage[ingredientKey].amount += ingredient.amount * quantity;
                     });
                 }
             });
@@ -657,20 +739,20 @@ function displayStatistics(allOrders) {
             ingredientsTable.className = 'stats-table';
             
             // Sort ingredients by usage (most used first)
-            const sortedIngredients = Object.entries(ingredientsUsage)
-                .sort((a, b) => b[1] - a[1]);
+            const sortedIngredients = Object.values(ingredientsUsage)
+                .sort((a, b) => b.amount - a.amount);
             
-            for (const [ingredient, count] of sortedIngredients) {
+            for (const ingredient of sortedIngredients) {
                 const ingredientRow = document.createElement('div');
                 ingredientRow.className = 'stats-table-row';
                 
                 const ingredientName = document.createElement('div');
                 ingredientName.className = 'stats-table-cell';
-                ingredientName.textContent = ingredient.charAt(0).toUpperCase() + ingredient.slice(1);
+                ingredientName.textContent = ingredient.name.charAt(0).toUpperCase() + ingredient.name.slice(1);
                 
                 const ingredientCount = document.createElement('div');
                 ingredientCount.className = 'stats-table-cell stats-table-count';
-                ingredientCount.textContent = count + ' units';
+                ingredientCount.textContent = `${ingredient.amount.toFixed(0)} ${ingredient.unit}`;
                 
                 ingredientRow.appendChild(ingredientName);
                 ingredientRow.appendChild(ingredientCount);
