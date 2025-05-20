@@ -24,6 +24,22 @@ let currentTab = 'all';
 let unsubscribe = null;
 let orders = [];
 
+// Pizza ingredients mapping for John Dough's pizzas
+const pizzaIngredients = {
+    "The Champ Pizza": ["pepperoni", "spring onions", "parmesan", "mozzarella", "pizza sauce"],
+    "Pig in Paradise": ["bacon", "caramelised pineapple", "mozzarella", "pizza sauce"],
+    "Margie Pizza": ["fresh mozzarella", "basil", "pizza sauce"],
+    "Mushroom Cloud Pizza": ["mushrooms", "goat's cheese", "sunflower seeds", "garlic", "caramelised onions", "chilli oil", "pizza sauce"],
+    "Spud Pizza": ["potato slices", "rosemary", "salt flakes", "caramelised onion", "chilli oil", "parmesan"],
+    "Mish-Mash Pizza": ["parma ham", "fig preserve", "goat's cheese", "rocket", "pizza sauce"],
+    "Lekker'izza": ["bacon", "chorizo sausage", "peppadews", "feta", "fresh herbs", "pizza sauce"],
+    "Vegan Harvest Pizza": ["mushrooms", "baby marrow", "kalamata olives", "sundried tomatoes", "seasonal herbs", "hummus", "olive oil"],
+    "Poppa's Pizza": ["anchovies", "olives", "fresh mozzarella", "basil", "pizza sauce"],
+    "The Zesty Zucchini": ["courgette", "blue cheese", "parmesan", "fresh mozzarella"],
+    "Chick Tick Boom": ["spicy chicken tikka", "peppadews", "fresh coriander", "mozzarella", "pizza sauce"],
+    "Artichoke & Ham": ["ham", "mushrooms", "artichoke leaves", "olives", "mozzarella", "pizza sauce"]
+};
+
 // Format date function
 function formatDate(timestamp) {
     if (!timestamp) return 'Unknown';
@@ -481,6 +497,9 @@ function displayStatistics(allOrders) {
     // Different pizza types sold today
     let pizzaTypes = {};
     
+    // Track ingredients usage
+    let ingredientsUsage = {};
+    
     todaysOrders.forEach(order => {
         const data = order.data();
         
@@ -523,6 +542,14 @@ function displayStatistics(allOrders) {
                 const pizzaType = pizza.pizzaType || 'Unknown';
                 if (!pizzaTypes[pizzaType]) pizzaTypes[pizzaType] = 0;
                 pizzaTypes[pizzaType] += quantity;
+                
+                // Track ingredients usage based on pizza type
+                if (pizzaIngredients[pizzaType]) {
+                    pizzaIngredients[pizzaType].forEach(ingredient => {
+                        if (!ingredientsUsage[ingredient]) ingredientsUsage[ingredient] = 0;
+                        ingredientsUsage[ingredient] += quantity;
+                    });
+                }
             });
         }
     });
@@ -619,6 +646,40 @@ function displayStatistics(allOrders) {
         
         pizzaBreakdown.appendChild(pizzaTable);
         statsContainer.appendChild(pizzaBreakdown);
+        
+        // Create ingredients usage breakdown
+        if (Object.keys(ingredientsUsage).length > 0) {
+            const ingredientsBreakdown = document.createElement('div');
+            ingredientsBreakdown.className = 'stats-breakdown';
+            ingredientsBreakdown.innerHTML = '<h3>Ingredients Usage</h3>';
+            
+            const ingredientsTable = document.createElement('div');
+            ingredientsTable.className = 'stats-table';
+            
+            // Sort ingredients by usage (most used first)
+            const sortedIngredients = Object.entries(ingredientsUsage)
+                .sort((a, b) => b[1] - a[1]);
+            
+            for (const [ingredient, count] of sortedIngredients) {
+                const ingredientRow = document.createElement('div');
+                ingredientRow.className = 'stats-table-row';
+                
+                const ingredientName = document.createElement('div');
+                ingredientName.className = 'stats-table-cell';
+                ingredientName.textContent = ingredient.charAt(0).toUpperCase() + ingredient.slice(1);
+                
+                const ingredientCount = document.createElement('div');
+                ingredientCount.className = 'stats-table-cell stats-table-count';
+                ingredientCount.textContent = count + ' units';
+                
+                ingredientRow.appendChild(ingredientName);
+                ingredientRow.appendChild(ingredientCount);
+                ingredientsTable.appendChild(ingredientRow);
+            }
+            
+            ingredientsBreakdown.appendChild(ingredientsTable);
+            statsContainer.appendChild(ingredientsBreakdown);
+        }
     }
     
     ordersContainer.appendChild(statsContainer);
