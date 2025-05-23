@@ -27,91 +27,96 @@ let orders = [];
 // Pizza ingredients mapping for John Dough's pizzas with quantities per pizza
 const pizzaIngredients = {
     "The Champ Pizza": [
-        {name: "pepperoni", amount: 50, unit: "g"},
-        {name: "spring onions", amount: 15, unit: "g"},
-        {name: "parmesan", amount: 20, unit: "g"},
-        {name: "mozzarella", amount: 100, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "pepperoni", amount: 75, unit: "g"},
+        {name: "spring onions", amount: 30, unit: "g"},
+        {name: "parmesan", amount: 3, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ],
     "Pig in Paradise": [
-        {name: "bacon", amount: 40, unit: "g"},
-        {name: "caramelised pineapple", amount: 60, unit: "g"},
-        {name: "mozzarella", amount: 100, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "bacon", amount: 65, unit: "g"},
+        {name: "caramelised pineapple", amount: 130, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ],
     "Margie Pizza": [
-        {name: "fresh mozzarella", amount: 120, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "fresh mozzarella", amount: 80, unit: "g"},
         {name: "basil", amount: 10, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ],
     "Mushroom Cloud Pizza": [
-        {name: "mushrooms", amount: 80, unit: "g"},
-        {name: "goat's cheese", amount: 50, unit: "g"},
-        {name: "sunflower seeds", amount: 15, unit: "g"},
-        {name: "garlic", amount: 5, unit: "g"},
-        {name: "caramelised onions", amount: 40, unit: "g"},
+        {name: "mushrooms", amount: 85, unit: "g"},
+        {name: "goat's cheese", amount: 35, unit: "g"},
+        {name: "sunflower seeds", amount: 10, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "caramelised onions", amount: 100, unit: "g"},
         {name: "chilli oil", amount: 10, unit: "ml"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ],
     "Spud Pizza": [
-        {name: "potato slices", amount: 100, unit: "g"},
-        {name: "rosemary", amount: 5, unit: "g"},
+        {name: "potato slices", amount: 95, unit: "g"},
+        {name: "rosemary", amount: 4, unit: "g"},
         {name: "salt flakes", amount: 3, unit: "g"},
-        {name: "caramelised onion", amount: 40, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "caramelised onion", amount: 100, unit: "g"},
         {name: "chilli oil", amount: 10, unit: "ml"},
-        {name: "parmesan", amount: 20, unit: "g"}
+        {name: "parmesan", amount: 3, unit: "g"}
     ],
     "Mish-Mash Pizza": [
         {name: "parma ham", amount: 40, unit: "g"},
-        {name: "fig preserve", amount: 30, unit: "g"},
-        {name: "goat's cheese", amount: 50, unit: "g"},
-        {name: "rocket", amount: 20, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "fig preserve", amount: 45, unit: "g"},
+        {name: "goat's cheese", amount: 35, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "rocket", amount: 15, unit: "g"},
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ],
     "Lekker'izza": [
-        {name: "bacon", amount: 30, unit: "g"},
-        {name: "chorizo sausage", amount: 40, unit: "g"},
+        {name: "bacon", amount: 65, unit: "g"},
+        {name: "chorizo sausage", amount: 65, unit: "g"},
         {name: "peppadews", amount: 30, unit: "g"},
-        {name: "feta", amount: 40, unit: "g"},
-        {name: "fresh herbs", amount: 5, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "feta", amount: 30, unit: "g"},
+        {name: "fresh herbs", amount: 15, unit: "g"},
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ],
     "Vegan Harvest Pizza": [
-        {name: "mushrooms", amount: 70, unit: "g"},
-        {name: "baby marrow", amount: 50, unit: "g"},
-        {name: "kalamata olives", amount: 30, unit: "g"},
-        {name: "sundried tomatoes", amount: 25, unit: "g"},
-        {name: "seasonal herbs", amount: 5, unit: "g"},
-        {name: "hummus", amount: 30, unit: "g"},
-        {name: "olive oil", amount: 15, unit: "ml"}
+        {name: "mushrooms", amount: 55, unit: "g"},
+        {name: "baby marrow", amount: 40, unit: "g"},
+        {name: "kalamata olives", amount: 60, unit: "g"},
+        {name: "sundried tomatoes", amount: 40, unit: "g"},
+        {name: "seasonal herbs", amount: 1, unit: "g"},
+        {name: "hummus", amount: 45, unit: "g"},
+        {name: "olive oil", amount: 10, unit: "ml"}
     ],
     "Poppa's Pizza": [
-        {name: "anchovies", amount: 30, unit: "g"},
-        {name: "olives", amount: 30, unit: "g"},
-        {name: "fresh mozzarella", amount: 120, unit: "g"},
+        {name: "anchovies", amount: 35, unit: "g"},
+        {name: "olives", amount: 60, unit: "g"},
+        {name: "fresh mozzarella", amount: 80, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
         {name: "basil", amount: 10, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ],
     "The Zesty Zucchini": [
-        {name: "courgette", amount: 80, unit: "g"},
+        {name: "courgette", amount: 75, unit: "g"},
         {name: "blue cheese", amount: 40, unit: "g"},
-        {name: "parmesan", amount: 20, unit: "g"},
-        {name: "fresh mozzarella", amount: 100, unit: "g"}
+        {name: "parmesan", amount: 3, unit: "g"},
+        {name: "fresh mozzarella", amount: 80, unit: "g"}
     ],
     "Chick Tick Boom": [
-        {name: "spicy chicken tikka", amount: 70, unit: "g"},
+        {name: "spicy chicken tikka", amount: 100, unit: "g"},
         {name: "peppadews", amount: 30, unit: "g"},
         {name: "fresh coriander", amount: 5, unit: "g"},
-        {name: "mozzarella", amount: 100, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "pizza sauce", amount: 65, unit: "g"}
     ],
     "Artichoke & Ham": [
-        {name: "ham", amount: 50, unit: "g"},
-        {name: "mushrooms", amount: 50, unit: "g"},
-        {name: "artichoke leaves", amount: 40, unit: "g"},
-        {name: "olives", amount: 30, unit: "g"},
-        {name: "mozzarella", amount: 100, unit: "g"},
-        {name: "pizza sauce", amount: 80, unit: "ml"}
+        {name: "ham", amount: 40, unit: "g"},
+        {name: "mushrooms", amount: 55, unit: "g"},
+        {name: "artichoke leaves", amount: 100, unit: "g"},
+        {name: "olives", amount: 60, unit: "g"},
+        {name: "shredded mozzarella", amount: 95, unit: "g"},
+        {name: "pizza sauce", amount: 60, unit: "g"}
     ]
 };
 
