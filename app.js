@@ -878,257 +878,314 @@ function displayMonthlyStatistics(allOrders) {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
     
-    // Filter orders for the current month
-    const monthlyOrders = allOrders.filter(order => {
-        const data = order.data();
-        const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
-            new Date(data.orderTime) : 
-            (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
-        
-        if (!orderTime) return false;
-        
-        const orderDate = new Date(orderTime);
-        
-        // Check if same month and year
-        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
-    });
+    // Get previous month and year
+    let prevMonth = currentMonth - 1;
+    let prevYear = currentYear;
+    if (prevMonth < 0) {
+        prevMonth = 11; // December
+        prevYear = currentYear - 1;
+    }
     
-    // Group orders by day of month
-    const ordersByDay = {};
-    const pizzaTypesByDay = {};
-    let monthlyTotalPizzas = 0;
-    let monthlyTotalRevenue = 0;
-    let monthlyTotalOrders = monthlyOrders.length;
-    let bestSellingPizza = { type: '', count: 0 };
-    let pizzaTypes = {};
-    
-    monthlyOrders.forEach(order => {
-        const data = order.data();
-        const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
-            new Date(data.orderTime) : 
-            (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
-        
-        if (!orderTime) return;
-        
-        const orderDate = new Date(orderTime);
-        const dayOfMonth = orderDate.getDate();
-        
-        // Initialize day if not exists
-        if (!ordersByDay[dayOfMonth]) {
-            ordersByDay[dayOfMonth] = {
-                orders: 0,
-                revenue: 0,
-                pizzas: 0
-            };
-        }
-        
-        // Initialize pizza types by day
-        if (!pizzaTypesByDay[dayOfMonth]) {
-            pizzaTypesByDay[dayOfMonth] = {};
-        }
-        
-        // Count order for this day
-        ordersByDay[dayOfMonth].orders++;
-        
-        // Add revenue
-        const revenue = Number(data.totalAmount) || 0;
-        ordersByDay[dayOfMonth].revenue += revenue;
-        monthlyTotalRevenue += revenue;
-        
-        // Count pizzas
-        if (data.pizzas && Array.isArray(data.pizzas)) {
-            data.pizzas.forEach(pizza => {
-                const quantity = pizza.quantity || 1;
-                const pizzaType = pizza.pizzaType || 'Unknown';
-                
-                // Add to daily count
-                ordersByDay[dayOfMonth].pizzas += quantity;
-                
-                // Add to pizza types by day
-                if (!pizzaTypesByDay[dayOfMonth][pizzaType]) {
-                    pizzaTypesByDay[dayOfMonth][pizzaType] = 0;
-                }
-                pizzaTypesByDay[dayOfMonth][pizzaType] += quantity;
-                
-                // Add to monthly count
-                monthlyTotalPizzas += quantity;
-                
-                // Track best-selling pizza
-                if (!pizzaTypes[pizzaType]) pizzaTypes[pizzaType] = 0;
-                pizzaTypes[pizzaType] += quantity;
-                
-                if (pizzaTypes[pizzaType] > bestSellingPizza.count) {
-                    bestSellingPizza = {
-                        type: pizzaType,
-                        count: pizzaTypes[pizzaType]
-                    };
-                }
-            });
-        }
-    });
-    
-    // Create month display
-    const dateDisplay = document.createElement('div');
-    dateDisplay.className = 'stats-date';
-    dateDisplay.textContent = now.toLocaleDateString(undefined, { 
-        year: 'numeric', month: 'long'
-    });
-    statsContainer.appendChild(dateDisplay);
-    
-    // Create summary cards for the month
-    const summaryCardsContainer = document.createElement('div');
-    summaryCardsContainer.className = 'stats-summary-cards';
-    
-    // Orders this month
-    summaryCardsContainer.appendChild(
-        createStatCard('Monthly Orders', monthlyTotalOrders, 'receipt_long', 'primary')
-    );
-    
-    // Total pizzas this month
-    summaryCardsContainer.appendChild(
-        createStatCard('Monthly Pizzas', monthlyTotalPizzas, 'local_pizza')
-    );
-    
-    // Total revenue this month
-    summaryCardsContainer.appendChild(
-        createStatCard('Monthly Revenue', formatCurrency(monthlyTotalRevenue), 'payments', 'success')
-    );
-    
-    // Best-selling pizza
-    summaryCardsContainer.appendChild(
-        createStatCard('Best Seller', bestSellingPizza.type, 'star', 'warning')
-    );
-    
-    statsContainer.appendChild(summaryCardsContainer);
-    
-    // Create daily breakdown
-    const dailyBreakdownContainer = document.createElement('div');
-    dailyBreakdownContainer.className = 'stats-section';
-    
-    const dailyBreakdownTitle = document.createElement('h3');
-    dailyBreakdownTitle.textContent = 'Daily Breakdown';
-    dailyBreakdownContainer.appendChild(dailyBreakdownTitle);
-    
-    // Create chart container
-    const chartContainer = document.createElement('div');
-    chartContainer.className = 'stats-chart-container';
-    
-    // Create chart
-    const chartCanvas = document.createElement('canvas');
-    chartCanvas.id = 'dailySalesChart';
-    chartCanvas.style.width = '100%';
-    chartCanvas.style.height = '300px';
-    chartContainer.appendChild(chartCanvas);
-    
-    dailyBreakdownContainer.appendChild(chartContainer);
-    
-    // Create a table for daily data
-    const table = document.createElement('table');
-    table.className = 'stats-table';
-    
-    const thead = document.createElement('thead');
-    thead.innerHTML = `
-        <tr>
-            <th>Day</th>
-            <th>Orders</th>
-            <th>Pizzas</th>
-            <th>Revenue</th>
-            <th>Top Pizza</th>
-        </tr>
+    // Create month selector
+    const monthSelector = document.createElement('div');
+    monthSelector.className = 'month-selector';
+    monthSelector.innerHTML = `
+        <label for="monthSelect">Select Month: </label>
+        <select id="monthSelect">
+            <option value="current" selected>Current Month (${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} ${currentYear})</option>
+            <option value="previous">Previous Month (${new Date(prevYear, prevMonth).toLocaleString('default', { month: 'long' })} ${prevYear})</option>
+        </select>
     `;
-    table.appendChild(thead);
+    statsContainer.appendChild(monthSelector);
     
-    const tbody = document.createElement('tbody');
+    // Create container for stats content that will be updated based on selection
+    const statsContent = document.createElement('div');
+    statsContent.id = 'monthlyStatsContent';
+    statsContainer.appendChild(statsContent);
     
-    // Sort days numerically
-    const sortedDays = Object.keys(ordersByDay).sort((a, b) => parseInt(a) - parseInt(b));
-    
-    // Prepare data for chart
-    const chartLabels = [];
-    const orderData = [];
-    const revenueData = [];
-    const pizzaData = [];
-    
-    sortedDays.forEach(day => {
-        const dayData = ordersByDay[day];
+    // Function to render stats for a specific month
+    const renderMonthStats = (targetMonth, targetYear) => {
+        // Clear previous content
+        statsContent.innerHTML = '';
         
-        // Add to chart data
-        chartLabels.push(day);
-        orderData.push(dayData.orders);
-        revenueData.push(dayData.revenue);
-        pizzaData.push(dayData.pizzas);
+        // Filter orders for the selected month
+        const monthlyOrders = allOrders.filter(order => {
+            const data = order.data();
+            const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
+                new Date(data.orderTime) : 
+                (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
+            
+            if (!orderTime) return false;
+            
+            const orderDate = new Date(orderTime);
+            
+            // Check if same month and year
+            return orderDate.getMonth() === targetMonth && orderDate.getFullYear() === targetYear;
+        });
         
-        // Find top pizza for this day
-        let topPizza = { type: 'None', count: 0 };
-        const pizzasForDay = pizzaTypesByDay[day];
+        // Create month display
+        const dateDisplay = document.createElement('div');
+        dateDisplay.className = 'stats-date';
+        dateDisplay.textContent = new Date(targetYear, targetMonth, 1).toLocaleDateString(undefined, { 
+            year: 'numeric', month: 'long'
+        });
+        statsContent.appendChild(dateDisplay);
         
-        for (const [type, count] of Object.entries(pizzasForDay)) {
-            if (count > topPizza.count) {
-                topPizza = { type, count };
-            }
+        // If no orders for this month
+        if (monthlyOrders.length === 0) {
+            const noData = document.createElement('div');
+            noData.className = 'no-orders';
+            noData.innerHTML = `<p>No pizza orders found for this month.</p>`;
+            statsContent.appendChild(noData);
+            return;
         }
         
-        // Create table row
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${day}</td>
-            <td>${dayData.orders}</td>
-            <td>${dayData.pizzas}</td>
-            <td>${formatCurrency(dayData.revenue)}</td>
-            <td>${topPizza.type} (${topPizza.count})</td>
-        `;
+        // Group orders by day of month
+        const ordersByDay = {};
+        const pizzaTypesByDay = {};
+        let monthlyTotalPizzas = 0;
+        let monthlyTotalRevenue = 0;
+        let monthlyTotalOrders = monthlyOrders.length;
+        let bestSellingPizza = { type: 'None', count: 0 };
+        let pizzaTypes = {};
         
-        tbody.appendChild(tr);
-    });
-    
-    table.appendChild(tbody);
-    dailyBreakdownContainer.appendChild(table);
-    
-    statsContainer.appendChild(dailyBreakdownContainer);
-    
-    // Add chart script to visualize the data
-    const chartScript = document.createElement('script');
-    chartScript.innerHTML = `
-        // Wait for the canvas to be in the DOM
-        setTimeout(() => {
-            const canvas = document.getElementById('dailySalesChart');
-            if (!canvas) return;
+        monthlyOrders.forEach(order => {
+            const data = order.data();
+            const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
+                new Date(data.orderTime) : 
+                (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
             
-            const ctx = canvas.getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ${JSON.stringify(chartLabels)},
-                    datasets: [
-                        {
-                            label: 'Pizzas',
-                            data: ${JSON.stringify(pizzaData)},
-                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                            borderColor: 'rgb(255, 99, 132)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Orders',
-                            data: ${JSON.stringify(orderData)},
-                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                            borderColor: 'rgb(54, 162, 235)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
+            if (!orderTime) return;
+            
+            const orderDate = new Date(orderTime);
+            const dayOfMonth = orderDate.getDate();
+            
+            // Initialize day if not exists
+            if (!ordersByDay[dayOfMonth]) {
+                ordersByDay[dayOfMonth] = {
+                    orders: 0,
+                    revenue: 0,
+                    pizzas: 0
+                };
+            }
+            
+            // Initialize pizza types by day
+            if (!pizzaTypesByDay[dayOfMonth]) {
+                pizzaTypesByDay[dayOfMonth] = {};
+            }
+            
+            // Count order for this day
+            ordersByDay[dayOfMonth].orders++;
+            
+            // Add revenue
+            const revenue = Number(data.totalAmount) || 0;
+            ordersByDay[dayOfMonth].revenue += revenue;
+            monthlyTotalRevenue += revenue;
+            
+            // Count pizzas
+            if (data.pizzas && Array.isArray(data.pizzas)) {
+                data.pizzas.forEach(pizza => {
+                    const quantity = pizza.quantity || 1;
+                    const pizzaType = pizza.pizzaType || 'Unknown';
+                    
+                    // Add to daily count
+                    ordersByDay[dayOfMonth].pizzas += quantity;
+                    
+                    // Add to pizza types by day
+                    if (!pizzaTypesByDay[dayOfMonth][pizzaType]) {
+                        pizzaTypesByDay[dayOfMonth][pizzaType] = 0;
+                    }
+                    pizzaTypesByDay[dayOfMonth][pizzaType] += quantity;
+                    
+                    // Add to monthly count
+                    monthlyTotalPizzas += quantity;
+                    
+                    // Track best-selling pizza
+                    if (!pizzaTypes[pizzaType]) pizzaTypes[pizzaType] = 0;
+                    pizzaTypes[pizzaType] += quantity;
+                    
+                    if (pizzaTypes[pizzaType] > bestSellingPizza.count) {
+                        bestSellingPizza = {
+                            type: pizzaType,
+                            count: pizzaTypes[pizzaType]
+                        };
+                    }
+                });
+            }
+        });
+        
+        // Create summary cards for the month
+        const summaryCardsContainer = document.createElement('div');
+        summaryCardsContainer.className = 'stats-summary-cards';
+        
+        // Orders this month
+        summaryCardsContainer.appendChild(
+            createStatCard('Monthly Orders', monthlyTotalOrders, 'receipt_long', 'primary')
+        );
+        
+        // Total pizzas this month
+        summaryCardsContainer.appendChild(
+            createStatCard('Monthly Pizzas', monthlyTotalPizzas, 'local_pizza')
+        );
+        
+        // Total revenue this month
+        summaryCardsContainer.appendChild(
+            createStatCard('Monthly Revenue', formatCurrency(monthlyTotalRevenue), 'payments', 'success')
+        );
+        
+        // Best-selling pizza
+        summaryCardsContainer.appendChild(
+            createStatCard('Best Seller', bestSellingPizza.type, 'star', 'warning')
+        );
+        
+        statsContent.appendChild(summaryCardsContainer);
+        
+        // Create daily breakdown
+        const dailyBreakdownContainer = document.createElement('div');
+        dailyBreakdownContainer.className = 'stats-section';
+        
+        const dailyBreakdownTitle = document.createElement('h3');
+        dailyBreakdownTitle.textContent = 'Daily Breakdown';
+        dailyBreakdownContainer.appendChild(dailyBreakdownTitle);
+        
+        // Create chart container
+        const chartContainer = document.createElement('div');
+        chartContainer.className = 'stats-chart-container';
+        
+        // Create chart
+        const chartCanvas = document.createElement('canvas');
+        chartCanvas.id = 'dailySalesChart';
+        chartCanvas.style.width = '100%';
+        chartCanvas.style.height = '300px';
+        chartContainer.appendChild(chartCanvas);
+        
+        dailyBreakdownContainer.appendChild(chartContainer);
+        
+        // Create a table for daily data
+        const table = document.createElement('table');
+        table.className = 'stats-table';
+        
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+            <tr>
+                <th>Day</th>
+                <th>Orders</th>
+                <th>Pizzas</th>
+                <th>Revenue</th>
+                <th>Top Pizza</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+        
+        const tbody = document.createElement('tbody');
+        
+        // Sort days numerically
+        const sortedDays = Object.keys(ordersByDay).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        // Prepare data for chart
+        const chartLabels = [];
+        const orderData = [];
+        const revenueData = [];
+        const pizzaData = [];
+        
+        sortedDays.forEach(day => {
+            const dayData = ordersByDay[day];
+            
+            // Add to chart data
+            chartLabels.push(day);
+            orderData.push(dayData.orders);
+            revenueData.push(dayData.revenue);
+            pizzaData.push(dayData.pizzas);
+            
+            // Find top pizza for this day
+            let topPizza = { type: 'None', count: 0 };
+            const pizzasForDay = pizzaTypesByDay[day];
+            
+            for (const [type, count] of Object.entries(pizzasForDay)) {
+                if (count > topPizza.count) {
+                    topPizza = { type, count };
+                }
+            }
+            
+            // Create table row
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${day}</td>
+                <td>${dayData.orders}</td>
+                <td>${dayData.pizzas}</td>
+                <td>${formatCurrency(dayData.revenue)}</td>
+                <td>${topPizza.type} (${topPizza.count})</td>
+            `;
+            
+            tbody.appendChild(tr);
+        });
+        
+        table.appendChild(tbody);
+        dailyBreakdownContainer.appendChild(table);
+        
+        statsContent.appendChild(dailyBreakdownContainer);
+        
+        // Add chart script to visualize the data
+        const chartScript = document.createElement('script');
+        chartScript.innerHTML = `
+            // Wait for the canvas to be in the DOM
+            setTimeout(() => {
+                const canvas = document.getElementById('dailySalesChart');
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ${JSON.stringify(chartLabels)},
+                        datasets: [
+                            {
+                                label: 'Pizzas',
+                                data: ${JSON.stringify(pizzaData)},
+                                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                borderColor: 'rgb(255, 99, 132)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Orders',
+                                data: ${JSON.stringify(orderData)},
+                                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                borderColor: 'rgb(54, 162, 235)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
                         }
                     }
+                });
+            }, 100);
+        `;
+        
+        statsContent.appendChild(chartScript);
+    };
+    
+    // Initial render with current month
+    renderMonthStats(currentMonth, currentYear);
+    
+    // Add event listener for month selector
+    setTimeout(() => {
+        const monthSelect = document.getElementById('monthSelect');
+        if (monthSelect) {
+            monthSelect.addEventListener('change', function() {
+                if (this.value === 'current') {
+                    renderMonthStats(currentMonth, currentYear);
+                } else {
+                    renderMonthStats(prevMonth, prevYear);
                 }
             });
-        }, 100);
-    `;
-    
-    statsContainer.appendChild(chartScript);
+        }
+    }, 0);
     
     ordersContainer.appendChild(statsContainer);
     updateLastUpdated();
