@@ -1,4 +1,4 @@
-What// Firebase Configuration
+// Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyBAOjtkE33iNfKf2KaKZNPuX9pCPwNXQDM",
     authDomain: "pizza-dashboard-92057.firebaseapp.com",
@@ -8,9 +8,28 @@ const firebaseConfig = {
     appId: "1:287044348356:ios:5eb4c95d0f6a3eb2159c91"
 };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+// Initialize Firebase with enhanced error handling
+try {
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
+    // Add CORS settings for GitHub Pages
+    db.settings({
+        ignoreUndefinedProperties: true,
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+    });
+    
+    console.log('Firebase initialized successfully');
+} catch (error) {
+    console.error('Error initializing Firebase:', error);
+    document.getElementById('ordersContainer').innerHTML = `
+        <div class="error-message">
+            <h3>⚠️ Connection Error</h3>
+            <p>Could not connect to Firebase. Error: ${error.message}</p>
+            <p>If you're viewing this on GitHub Pages, make sure your Firebase security rules allow access from this domain.</p>
+        </div>
+    `;
+}
 
 // DOM Elements
 const ordersContainer = document.getElementById('ordersContainer');
@@ -806,22 +825,36 @@ function fetchOrders() {
         </div>
     `;
     
-    const query = db.collection('orders')
-        .orderBy('orderTime', 'desc')
-        .limit(100); // Increased limit to 100 orders
-    
-    query.get().then(snapshot => {
-        orders = snapshot.docs;
-        const filteredOrders = filterOrdersByStatus(currentTab);
-        displayOrders(filteredOrders);
-    }).catch(error => {
-        console.error('Error fetching orders:', error);
+    try {
+        const query = db.collection('orders')
+            .orderBy('orderTime', 'desc')
+            .limit(100); // Increased limit to 100 orders
+        
+        query.get().then(snapshot => {
+            console.log('Orders fetched successfully:', snapshot.size);
+            orders = snapshot.docs;
+            const filteredOrders = filterOrdersByStatus(currentTab);
+            displayOrders(filteredOrders);
+        }).catch(error => {
+            console.error('Error fetching orders:', error);
+            ordersContainer.innerHTML = `
+                <div class="no-orders">
+                    <h3>⚠️ Error Loading Orders</h3>
+                    <p>${error.message}</p>
+                    <p>This may be due to Firebase security rules. If you're viewing on GitHub Pages, you need to update your Firestore rules to allow access from this domain.</p>
+                    <code>Error code: ${error.code || 'unknown'}</code>
+                </div>
+            `;
+        });
+    } catch (e) {
+        console.error('Fatal error accessing Firestore:', e);
         ordersContainer.innerHTML = `
             <div class="no-orders">
-                Error loading orders: ${error.message}
+                <h3>⚠️ Connection Error</h3>
+                <p>Could not connect to Firebase database. Error: ${e.message}</p>
             </div>
         `;
-    });
+    }
 }
 
 // Set up real-time listener
