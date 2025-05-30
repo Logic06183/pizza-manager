@@ -743,6 +743,17 @@ function displayStatistics(allOrders) {
     });
     statsContainer.appendChild(dateDisplay);
     
+    // If no orders today
+    if (todaysOrders.length === 0) {
+        const noData = document.createElement('div');
+        noData.className = 'no-orders';
+        noData.innerHTML = `<p>No pizza orders found for today.</p>`;
+        statsContainer.appendChild(noData);
+        ordersContainer.appendChild(statsContainer);
+        updateLastUpdated();
+        return;
+    }
+    
     // Create summary cards
     const summaryCardsContainer = document.createElement('div');
     summaryCardsContainer.className = 'stats-summary-cards';
@@ -765,102 +776,511 @@ function displayStatistics(allOrders) {
     
     statsContainer.appendChild(summaryCardsContainer);
     
-    // Create status breakdown
+    // Order status breakdown with visualization
     const statusBreakdown = document.createElement('div');
-    statusBreakdown.className = 'stats-breakdown';
-    statusBreakdown.innerHTML = '<h3>Orders by Status</h3>';
+    statusBreakdown.className = 'stats-section';
     
-    const statusTable = document.createElement('div');
+    const statusTitle = document.createElement('h3');
+    statusTitle.textContent = 'Order Status Breakdown';
+    statusBreakdown.appendChild(statusTitle);
+    
+    // Create a container for status visualization
+    const statusVisualContainer = document.createElement('div');
+    statusVisualContainer.className = 'stats-visual-container';
+    statusBreakdown.appendChild(statusVisualContainer);
+    
+    // Create a bar chart for status
+    const statusChartContainer = document.createElement('div');
+    statusChartContainer.className = 'stats-chart-container';
+    statusChartContainer.style.flex = '1';
+    
+    const statusCanvas = document.createElement('canvas');
+    statusCanvas.id = 'orderStatusChart';
+    statusCanvas.style.width = '100%';
+    statusCanvas.style.height = '250px';
+    statusChartContainer.appendChild(statusCanvas);
+    statusVisualContainer.appendChild(statusChartContainer);
+    
+    // Create table container
+    const statusTableContainer = document.createElement('div');
+    statusTableContainer.className = 'stats-table-container';
+    statusTableContainer.style.flex = '1';
+    statusVisualContainer.appendChild(statusTableContainer);
+    
+    const statusTable = document.createElement('table');
     statusTable.className = 'stats-table';
     
+    // Header
+    const statusHeader = document.createElement('tr');
+    statusHeader.innerHTML = `
+        <th>Status</th>
+        <th>Count</th>
+    `;
+    statusTable.appendChild(statusHeader);
+    
+    // Prepare data for status chart
+    const statusLabels = [];
+    const statusData = [];
+    const statusColors = [
+        'rgba(255, 99, 132, 0.7)',  // pending/new
+        'rgba(255, 206, 86, 0.7)',  // preparing
+        'rgba(54, 162, 235, 0.7)',  // ready
+        'rgba(75, 192, 192, 0.7)',  // done
+        'rgba(153, 102, 255, 0.7)', // delivered
+        'rgba(255, 159, 64, 0.7)'   // cancelled
+    ];
+    
+    // Create status rows and collect chart data
     for (const [status, count] of Object.entries(statusCounts)) {
         if (count > 0) {
-            const statusRow = document.createElement('div');
-            statusRow.className = 'stats-table-row';
+            const row = document.createElement('tr');
             
-            const statusName = document.createElement('div');
-            statusName.className = 'stats-table-cell';
-            statusName.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            // Capitalize status
+            const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1);
             
-            const statusCount = document.createElement('div');
-            statusCount.className = 'stats-table-cell stats-table-count';
-            statusCount.textContent = count;
+            row.innerHTML = `
+                <td>${formattedStatus}</td>
+                <td>${count}</td>
+            `;
             
-            statusRow.appendChild(statusName);
-            statusRow.appendChild(statusCount);
-            statusTable.appendChild(statusRow);
+            statusTable.appendChild(row);
+            
+            // Add to chart data
+            statusLabels.push(formattedStatus);
+            statusData.push(count);
         }
     }
     
-    statusBreakdown.appendChild(statusTable);
+    statusTableContainer.appendChild(statusTable);
+    
+    // Create status chart script
+    const statusChartScript = document.createElement('script');
+    statusChartScript.innerHTML = `
+        setTimeout(() => {
+            const statusCtx = document.getElementById('orderStatusChart');
+            if (!statusCtx) return;
+            
+            new Chart(statusCtx, {
+                type: 'bar',
+                data: {
+                    labels: ${JSON.stringify(statusLabels)},
+                    datasets: [{
+                        label: 'Number of Orders',
+                        data: ${JSON.stringify(statusData)},
+                        backgroundColor: ${JSON.stringify(statusColors.slice(0, statusLabels.length))},
+                        borderColor: ${JSON.stringify(statusColors.slice(0, statusLabels.length).map(color => color.replace('0.7', '1')))},
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Orders by Status',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }, 100);
+    `;
+    
+    statusBreakdown.appendChild(statusChartScript);
     statsContainer.appendChild(statusBreakdown);
     
-    // Create pizza types breakdown if we have any pizzas
+    // Add hourly distribution chart
+    // Group orders by hour
+    const hourlyOrders = {};
+    
+    todaysOrders.forEach(order => {
+        const data = order.data();
+        const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
+            new Date(data.orderTime) : 
+            (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
+        
+        if (!orderTime) return;
+        
+        const hour = orderTime.getHours();
+        
+        // Initialize hour if not exists
+        if (!hourlyOrders[hour]) {
+            hourlyOrders[hour] = 0;
+        }
+        
+        // Count order for this hour
+        hourlyOrders[hour]++;
+    });
+    
+    if (Object.keys(hourlyOrders).length > 0) {
+        const hourlyBreakdown = document.createElement('div');
+        hourlyBreakdown.className = 'stats-section';
+        
+        const hourlyTitle = document.createElement('h3');
+        hourlyTitle.textContent = 'Hourly Order Distribution';
+        hourlyBreakdown.appendChild(hourlyTitle);
+        
+        const hourlyChartContainer = document.createElement('div');
+        hourlyChartContainer.className = 'stats-chart-container full-width';
+        
+        const hourlyCanvas = document.createElement('canvas');
+        hourlyCanvas.id = 'hourlyOrdersChart';
+        hourlyCanvas.style.width = '100%';
+        hourlyCanvas.style.height = '250px';
+        hourlyChartContainer.appendChild(hourlyCanvas);
+        hourlyBreakdown.appendChild(hourlyChartContainer);
+        
+        // Create all 24 hours for a complete timeline
+        const hourLabels = [];
+        const hourData = [];
+        
+        for (let i = 0; i < 24; i++) {
+            // Format hour as 12-hour with AM/PM
+            let displayHour;
+            if (i === 0) displayHour = '12 AM';
+            else if (i < 12) displayHour = `${i} AM`;
+            else if (i === 12) displayHour = '12 PM';
+            else displayHour = `${i - 12} PM`;
+            
+            hourLabels.push(displayHour);
+            hourData.push(hourlyOrders[i] || 0);
+        }
+        
+        // Create hourly chart script
+        const hourlyChartScript = document.createElement('script');
+        hourlyChartScript.innerHTML = `
+            setTimeout(() => {
+                const hourlyCtx = document.getElementById('hourlyOrdersChart');
+                if (!hourlyCtx) return;
+                
+                new Chart(hourlyCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ${JSON.stringify(hourLabels)},
+                        datasets: [{
+                            label: 'Orders per Hour',
+                            data: ${JSON.stringify(hourData)},
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            tension: 0.2,
+                            fill: true,
+                            pointBackgroundColor: 'rgba(75, 192, 192, 1)',
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Orders Throughout the Day',
+                                font: {
+                                    size: 16
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        }
+                    }
+                });
+            }, 100);
+        `;
+        
+        hourlyBreakdown.appendChild(hourlyChartScript);
+        statsContainer.appendChild(hourlyBreakdown);
+    }
+    
+    // Create pizza types breakdown
+    // If we have pizza types, display breakdown with visualization
     if (Object.keys(pizzaTypes).length > 0) {
-        const pizzaBreakdown = document.createElement('div');
-        pizzaBreakdown.className = 'stats-breakdown';
-        pizzaBreakdown.innerHTML = '<h3>Pizzas by Type</h3>';
+        const pizzaTypesBreakdown = document.createElement('div');
+        pizzaTypesBreakdown.className = 'stats-section';
         
-        const pizzaTable = document.createElement('div');
-        pizzaTable.className = 'stats-table';
+        const pizzaTypesTitle = document.createElement('h3');
+        pizzaTypesTitle.textContent = 'Pizza Types Sold Today';
+        pizzaTypesBreakdown.appendChild(pizzaTypesTitle);
         
-        // Sort pizza types by quantity (most popular first)
+        // Create chart and table container with flex layout
+        const pizzaTypesVisualContainer = document.createElement('div');
+        pizzaTypesVisualContainer.className = 'stats-visual-container';
+        pizzaTypesBreakdown.appendChild(pizzaTypesVisualContainer);
+        
+        // Add pie chart for pizza distribution
+        const pieChartContainer = document.createElement('div');
+        pieChartContainer.className = 'stats-chart-container';
+        pieChartContainer.style.flex = '1';
+        
+        const pieCanvas = document.createElement('canvas');
+        pieCanvas.id = 'pizzaTypesPieChart';
+        pieCanvas.style.width = '100%';
+        pieCanvas.style.height = '300px';
+        pieChartContainer.appendChild(pieCanvas);
+        pizzaTypesVisualContainer.appendChild(pieChartContainer);
+        
+        // Create table container
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'stats-table-container';
+        tableContainer.style.flex = '1';
+        pizzaTypesVisualContainer.appendChild(tableContainer);
+        
+        const pizzaTypesTable = document.createElement('table');
+        pizzaTypesTable.className = 'stats-table';
+        
+        // Create table header
+        const header = document.createElement('tr');
+        header.innerHTML = `
+            <th>Pizza Type</th>
+            <th>Quantity</th>
+            <th>% of Total</th>
+        `;
+        pizzaTypesTable.appendChild(header);
+        
+        // Sort pizza types by quantity (descending)
         const sortedPizzaTypes = Object.entries(pizzaTypes)
             .sort((a, b) => b[1] - a[1]);
         
-        for (const [pizzaType, count] of sortedPizzaTypes) {
-            const pizzaRow = document.createElement('div');
-            pizzaRow.className = 'stats-table-row';
-            
-            const pizzaName = document.createElement('div');
-            pizzaName.className = 'stats-table-cell';
-            pizzaName.textContent = pizzaType;
-            
-            const pizzaCount = document.createElement('div');
-            pizzaCount.className = 'stats-table-cell stats-table-count';
-            pizzaCount.textContent = count;
-            
-            pizzaRow.appendChild(pizzaName);
-            pizzaRow.appendChild(pizzaCount);
-            pizzaTable.appendChild(pizzaRow);
-        }
+        // Prepare data for pie chart
+        const pieLabels = [];
+        const pieData = [];
+        const pieColors = [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 206, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(199, 199, 199, 0.8)',
+            'rgba(83, 102, 255, 0.8)',
+            'rgba(40, 159, 64, 0.8)',
+            'rgba(210, 55, 86, 0.8)'
+        ];
         
-        pizzaBreakdown.appendChild(pizzaTable);
-        statsContainer.appendChild(pizzaBreakdown);
-        
-        // Create ingredients usage breakdown
-        if (Object.keys(ingredientsUsage).length > 0) {
-            const ingredientsBreakdown = document.createElement('div');
-            ingredientsBreakdown.className = 'stats-breakdown';
-            ingredientsBreakdown.innerHTML = '<h3>Ingredients Usage</h3>';
+        // Create table rows and collect pie chart data
+        sortedPizzaTypes.forEach(([type, quantity], index) => {
+            const row = document.createElement('tr');
+            const percentage = ((quantity / totalPizzas) * 100).toFixed(1);
             
-            const ingredientsTable = document.createElement('div');
-            ingredientsTable.className = 'stats-table';
+            row.innerHTML = `
+                <td>${type}</td>
+                <td>${quantity}</td>
+                <td>${percentage}%</td>
+            `;
             
-            // Sort ingredients by usage (most used first)
-            const sortedIngredients = Object.values(ingredientsUsage)
-                .sort((a, b) => b.amount - a.amount);
+            pizzaTypesTable.appendChild(row);
             
-            for (const ingredient of sortedIngredients) {
-                const ingredientRow = document.createElement('div');
-                ingredientRow.className = 'stats-table-row';
-                
-                const ingredientName = document.createElement('div');
-                ingredientName.className = 'stats-table-cell';
-                ingredientName.textContent = ingredient.name.charAt(0).toUpperCase() + ingredient.name.slice(1);
-                
-                const ingredientCount = document.createElement('div');
-                ingredientCount.className = 'stats-table-cell stats-table-count';
-                ingredientCount.textContent = `${ingredient.amount.toFixed(0)} ${ingredient.unit}`;
-                
-                ingredientRow.appendChild(ingredientName);
-                ingredientRow.appendChild(ingredientCount);
-                ingredientsTable.appendChild(ingredientRow);
+            // Add data for pie chart (limit to top 8 for clarity)
+            if (index < 8) {
+                pieLabels.push(type);
+                pieData.push(quantity);
+            } else if (index === 8) {
+                // Group remaining as "Other"
+                pieLabels.push('Other');
+                pieData.push(quantity);
+            } else if (index > 8) {
+                // Add to "Other"
+                pieData[8] += quantity;
             }
+        });
+        
+        tableContainer.appendChild(pizzaTypesTable);
+        
+        // Create pie chart script
+        const pieChartScript = document.createElement('script');
+        pieChartScript.innerHTML = `
+            setTimeout(() => {
+                const pieCtx = document.getElementById('pizzaTypesPieChart');
+                if (!pieCtx) return;
+                
+                new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ${JSON.stringify(pieLabels)},
+                        datasets: [{
+                            data: ${JSON.stringify(pieData)},
+                            backgroundColor: ${JSON.stringify(pieColors.slice(0, pieLabels.length))},
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    boxWidth: 15,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Pizza Types Distribution',
+                                font: {
+                                    size: 16
+                                }
+                            }
+                        }
+                    }
+                });
+            }, 100);
+        `;
+        
+        pizzaTypesBreakdown.appendChild(pieChartScript);
+        statsContainer.appendChild(pizzaTypesBreakdown);
+    }
+    
+    // If we have ingredients, display usage with visualization
+    if (Object.keys(ingredientsUsage).length > 0) {
+        const ingredientsBreakdown = document.createElement('div');
+        ingredientsBreakdown.className = 'stats-section';
+        
+        const ingredientsTitle = document.createElement('h3');
+        ingredientsTitle.textContent = 'Ingredients Used Today';
+        ingredientsBreakdown.appendChild(ingredientsTitle);
+        
+        // Create visualization container
+        const ingredientsVisualContainer = document.createElement('div');
+        ingredientsVisualContainer.className = 'stats-visual-container';
+        ingredientsBreakdown.appendChild(ingredientsVisualContainer);
+        
+        // Create chart container
+        const ingredientsChartContainer = document.createElement('div');
+        ingredientsChartContainer.className = 'stats-chart-container';
+        ingredientsChartContainer.style.flex = '1';
+        
+        const ingredientsCanvas = document.createElement('canvas');
+        ingredientsCanvas.id = 'ingredientsChart';
+        ingredientsCanvas.style.width = '100%';
+        ingredientsCanvas.style.height = '300px';
+        ingredientsChartContainer.appendChild(ingredientsCanvas);
+        ingredientsVisualContainer.appendChild(ingredientsChartContainer);
+        
+        // Create table container
+        const ingredientsTableContainer = document.createElement('div');
+        ingredientsTableContainer.className = 'stats-table-container';
+        ingredientsTableContainer.style.flex = '1';
+        ingredientsVisualContainer.appendChild(ingredientsTableContainer);
+        
+        const ingredientsTable = document.createElement('div');
+        ingredientsTable.className = 'stats-table ingredients-table';
+        ingredientsTableContainer.appendChild(ingredientsTable);
+        
+        // Sort ingredients by usage (descending)
+        const sortedIngredients = Object.values(ingredientsUsage)
+            .sort((a, b) => b.amount - a.amount);
+        
+        // Prepare data for ingredients chart (top 10 only for clarity)
+        const ingredientLabels = [];
+        const ingredientData = [];
+        const ingredientColors = [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(153, 102, 255, 0.7)',
+            'rgba(255, 159, 64, 0.7)',
+            'rgba(199, 199, 199, 0.7)',
+            'rgba(83, 102, 255, 0.7)',
+            'rgba(40, 159, 64, 0.7)',
+            'rgba(210, 55, 86, 0.7)'
+        ];
+        
+        // Create table rows and collect chart data
+        sortedIngredients.forEach((ingredient, index) => {
+            const ingredientRow = document.createElement('div');
+            ingredientRow.className = 'stats-table-row';
             
-            ingredientsBreakdown.appendChild(ingredientsTable);
-            statsContainer.appendChild(ingredientsBreakdown);
-        }
+            const ingredientName = document.createElement('div');
+            ingredientName.className = 'stats-table-cell stats-table-name';
+            ingredientName.textContent = ingredient.name;
+                
+            const ingredientCount = document.createElement('div');
+            ingredientCount.className = 'stats-table-cell stats-table-count';
+            ingredientCount.textContent = `${ingredient.amount.toFixed(0)} ${ingredient.unit}`;
+            
+            ingredientRow.appendChild(ingredientName);
+            ingredientRow.appendChild(ingredientCount);
+            ingredientsTable.appendChild(ingredientRow);
+            
+            // Add top 10 ingredients to chart
+            if (index < 10) {
+                ingredientLabels.push(ingredient.name);
+                ingredientData.push(ingredient.amount);
+            }
+        });
+        
+        // Create ingredients chart script
+        const ingredientsChartScript = document.createElement('script');
+        ingredientsChartScript.innerHTML = `
+            setTimeout(() => {
+                const ingredientsCtx = document.getElementById('ingredientsChart');
+                if (!ingredientsCtx) return;
+                
+                new Chart(ingredientsCtx, {
+                    type: 'horizontalBar',
+                    data: {
+                        labels: ${JSON.stringify(ingredientLabels)},
+                        datasets: [{
+                            label: 'Amount Used',
+                            data: ${JSON.stringify(ingredientData)},
+                            backgroundColor: ${JSON.stringify(ingredientColors.slice(0, ingredientLabels.length))},
+                            borderColor: ${JSON.stringify(ingredientColors.slice(0, ingredientLabels.length).map(color => color.replace('0.7', '1')))},
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Top Ingredients Used (by quantity)',
+                                font: {
+                                    size: 16
+                                }
+                            },
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }, 100);
+        `;
+        
+        ingredientsBreakdown.appendChild(ingredientsChartScript);
+        statsContainer.appendChild(ingredientsBreakdown);
     }
     
     ordersContainer.appendChild(statsContainer);
