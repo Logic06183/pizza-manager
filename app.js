@@ -1,4 +1,4 @@
-// Firebase Configuration
+What// Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyBAOjtkE33iNfKf2KaKZNPuX9pCPwNXQDM",
     authDomain: "pizza-dashboard-92057.firebaseapp.com",
@@ -553,12 +553,12 @@ function displayStatistics(allOrders) {
         const now = new Date();
         const diffHours = (now - orderDate) / (1000 * 60 * 60);
         
-        // Check if same day (local time) or within last 24 hours
+        // Check if same day (local time) only
         const isSameDay = orderDate.getDate() === now.getDate() && 
                           orderDate.getMonth() === now.getMonth() && 
                           orderDate.getFullYear() === now.getFullYear();
         
-        return isSameDay || diffHours < 24;
+        return isSameDay; // Only include orders from the current calendar day
     });
     
     // Calculate total pizzas sold today
