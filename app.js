@@ -9,9 +9,10 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase with enhanced error handling
+let db;
 try {
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    db = firebase.firestore();
     
     // Add CORS settings for GitHub Pages
     db.settings({
