@@ -1,3 +1,24 @@
+// Debug logger function
+function debugLog(message, type = 'info') {
+    const debugConsole = document.getElementById('debugConsole');
+    if (!debugConsole) return;
+    
+    const line = document.createElement('div');
+    line.className = `debug-line debug-${type}`;
+    const timestamp = new Date().toLocaleTimeString();
+    line.textContent = `[${timestamp}] ${message}`;
+    
+    debugConsole.appendChild(line);
+    debugConsole.scrollTop = debugConsole.scrollHeight;
+    
+    // Also log to browser console
+    if (type === 'error') {
+        console.error(message);
+    } else {
+        console.log(message);
+    }
+}
+
 // Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyBAOjtkE33iNfKf2KaKZNPuX9pCPwNXQDM",
@@ -8,28 +29,74 @@ const firebaseConfig = {
     appId: "1:287044348356:ios:5eb4c95d0f6a3eb2159c91"
 };
 
-// Initialize Firebase with enhanced error handling
+// Initialize Firebase with enhanced error handling and debugging
 let db;
-try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    
-    // Add CORS settings for GitHub Pages
-    db.settings({
-        ignoreUndefinedProperties: true,
-        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-    });
-    
-    console.log('Firebase initialized successfully');
-} catch (error) {
-    console.error('Error initializing Firebase:', error);
+let firebaseInitialized = false;
+
+debugLog('Starting Firebase initialization...');
+
+// Check if Firebase SDK is loaded
+if (typeof firebase === 'undefined') {
+    debugLog('Firebase SDK not loaded! Check network connectivity and script tags.', 'error');
     document.getElementById('ordersContainer').innerHTML = `
         <div class="error-message">
-            <h3>⚠️ Connection Error</h3>
-            <p>Could not connect to Firebase. Error: ${error.message}</p>
-            <p>If you're viewing this on GitHub Pages, make sure your Firebase security rules allow access from this domain.</p>
+            <h3>⚠️ Firebase SDK Not Loaded</h3>
+            <p>Firebase scripts could not be loaded. Check your internet connection.</p>
+            <p>Click the 'Show Debug' button at the bottom right for more details.</p>
         </div>
     `;
+} else {
+    debugLog('Firebase SDK detected, attempting to initialize...');
+    try {
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        debugLog('Firebase app initialized successfully');
+        
+        // Check if Firestore is available
+        if (typeof firebase.firestore === 'undefined') {
+            debugLog('Firestore module not available!', 'error');
+            throw new Error('Firestore module not loaded');
+        }
+        
+        // Initialize Firestore
+        db = firebase.firestore();
+        debugLog('Firestore initialized');
+        
+        // Add settings for better cross-domain support
+        db.settings({
+            ignoreUndefinedProperties: true,
+            cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+        });
+        debugLog('Firestore settings applied');
+        
+        // Test the connection with a simple query
+        db.collection('orders').limit(1).get()
+            .then(snapshot => {
+                debugLog(`Firestore test query successful: ${snapshot.size} docs returned`);
+                firebaseInitialized = true;
+            })
+            .catch(error => {
+                debugLog(`Firestore test query failed: ${error.message}`, 'error');
+                document.getElementById('ordersContainer').innerHTML = `
+                    <div class="error-message">
+                        <h3>⚠️ Firebase Connection Error</h3>
+                        <p>Could not connect to Firestore. This is likely due to security rules.</p>
+                        <p>Error: ${error.message}</p>
+                        <p>If you're viewing this on GitHub Pages, make sure your Firebase security rules allow access from this domain.</p>
+                        <p>Click the 'Show Debug' button at the bottom right for technical details.</p>
+                    </div>
+                `;
+            });
+    } catch (error) {
+        debugLog(`Firebase initialization error: ${error.message}`, 'error');
+        document.getElementById('ordersContainer').innerHTML = `
+            <div class="error-message">
+                <h3>⚠️ Firebase Initialization Error</h3>
+                <p>Could not initialize Firebase: ${error.message}</p>
+                <p>Check the console for more details and make sure your Firebase project settings are correct.</p>
+            </div>
+        `;
+    }
 }
 
 // DOM Elements
@@ -505,38 +572,45 @@ function createOrderCard(order) {
 
 // Filter orders based on tab
 function filterOrdersByStatus(status) {
-    if (status === 'all') {
-        return orders;
+    if (status === 'stats' || status === 'monthly') {
+        return orders; // Return all orders for stats
     }
     
+    if (status === 'all') {
+        return orders; // All orders
+    }
+    
+    // Filter by status
     return orders.filter(order => {
-        const orderData = order.data();
-        const orderStatus = (orderData.status || '').toLowerCase();
-        
-        // Special case: 'pending' orders should appear in 'preparing' tab
-        if (status === 'preparing' && orderStatus === 'pending') {
-            return true;
-        }
-        
-        return orderStatus === status;
+        const data = order.data();
+        return data.status && data.status.toLowerCase() === status;
     });
 }
 
 // Display orders or statistics in the container
 function displayOrders(filteredOrders) {
+    // Clear container
     ordersContainer.innerHTML = '';
     
-    // If stats tab is active, show statistics instead of orders
+    // Check if this is the stats tab
     if (currentTab === 'stats') {
-        displayStatistics(orders);
+        displayStatistics(filteredOrders);
         return;
     }
     
+    // Check if this is the monthly stats tab
+    if (currentTab === 'monthly') {
+        displayMonthlyStatistics(filteredOrders);
+        return;
+    }
+    
+    // If no orders
     if (filteredOrders.length === 0) {
-        const noOrders = document.createElement('div');
-        noOrders.className = 'no-orders';
-        noOrders.textContent = 'No orders found';
-        ordersContainer.appendChild(noOrders);
+        ordersContainer.innerHTML = `
+            <div class="no-orders">
+                <p>No orders found</p>
+            </div>
+        `;
         return;
     }
     
@@ -793,6 +867,273 @@ function displayStatistics(allOrders) {
     updateLastUpdated();
 }
 
+// Display monthly statistics
+function displayMonthlyStatistics(allOrders) {
+    // Create stats container
+    const statsContainer = document.createElement('div');
+    statsContainer.className = 'stats-container';
+    
+    // Get current month and year
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    // Filter orders for the current month
+    const monthlyOrders = allOrders.filter(order => {
+        const data = order.data();
+        const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
+            new Date(data.orderTime) : 
+            (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
+        
+        if (!orderTime) return false;
+        
+        const orderDate = new Date(orderTime);
+        
+        // Check if same month and year
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+    });
+    
+    // Group orders by day of month
+    const ordersByDay = {};
+    const pizzaTypesByDay = {};
+    let monthlyTotalPizzas = 0;
+    let monthlyTotalRevenue = 0;
+    let monthlyTotalOrders = monthlyOrders.length;
+    let bestSellingPizza = { type: '', count: 0 };
+    let pizzaTypes = {};
+    
+    monthlyOrders.forEach(order => {
+        const data = order.data();
+        const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
+            new Date(data.orderTime) : 
+            (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
+        
+        if (!orderTime) return;
+        
+        const orderDate = new Date(orderTime);
+        const dayOfMonth = orderDate.getDate();
+        
+        // Initialize day if not exists
+        if (!ordersByDay[dayOfMonth]) {
+            ordersByDay[dayOfMonth] = {
+                orders: 0,
+                revenue: 0,
+                pizzas: 0
+            };
+        }
+        
+        // Initialize pizza types by day
+        if (!pizzaTypesByDay[dayOfMonth]) {
+            pizzaTypesByDay[dayOfMonth] = {};
+        }
+        
+        // Count order for this day
+        ordersByDay[dayOfMonth].orders++;
+        
+        // Add revenue
+        const revenue = Number(data.totalAmount) || 0;
+        ordersByDay[dayOfMonth].revenue += revenue;
+        monthlyTotalRevenue += revenue;
+        
+        // Count pizzas
+        if (data.pizzas && Array.isArray(data.pizzas)) {
+            data.pizzas.forEach(pizza => {
+                const quantity = pizza.quantity || 1;
+                const pizzaType = pizza.pizzaType || 'Unknown';
+                
+                // Add to daily count
+                ordersByDay[dayOfMonth].pizzas += quantity;
+                
+                // Add to pizza types by day
+                if (!pizzaTypesByDay[dayOfMonth][pizzaType]) {
+                    pizzaTypesByDay[dayOfMonth][pizzaType] = 0;
+                }
+                pizzaTypesByDay[dayOfMonth][pizzaType] += quantity;
+                
+                // Add to monthly count
+                monthlyTotalPizzas += quantity;
+                
+                // Track best-selling pizza
+                if (!pizzaTypes[pizzaType]) pizzaTypes[pizzaType] = 0;
+                pizzaTypes[pizzaType] += quantity;
+                
+                if (pizzaTypes[pizzaType] > bestSellingPizza.count) {
+                    bestSellingPizza = {
+                        type: pizzaType,
+                        count: pizzaTypes[pizzaType]
+                    };
+                }
+            });
+        }
+    });
+    
+    // Create month display
+    const dateDisplay = document.createElement('div');
+    dateDisplay.className = 'stats-date';
+    dateDisplay.textContent = now.toLocaleDateString(undefined, { 
+        year: 'numeric', month: 'long'
+    });
+    statsContainer.appendChild(dateDisplay);
+    
+    // Create summary cards for the month
+    const summaryCardsContainer = document.createElement('div');
+    summaryCardsContainer.className = 'stats-summary-cards';
+    
+    // Orders this month
+    summaryCardsContainer.appendChild(
+        createStatCard('Monthly Orders', monthlyTotalOrders, 'receipt_long', 'primary')
+    );
+    
+    // Total pizzas this month
+    summaryCardsContainer.appendChild(
+        createStatCard('Monthly Pizzas', monthlyTotalPizzas, 'local_pizza')
+    );
+    
+    // Total revenue this month
+    summaryCardsContainer.appendChild(
+        createStatCard('Monthly Revenue', formatCurrency(monthlyTotalRevenue), 'payments', 'success')
+    );
+    
+    // Best-selling pizza
+    summaryCardsContainer.appendChild(
+        createStatCard('Best Seller', bestSellingPizza.type, 'star', 'warning')
+    );
+    
+    statsContainer.appendChild(summaryCardsContainer);
+    
+    // Create daily breakdown
+    const dailyBreakdownContainer = document.createElement('div');
+    dailyBreakdownContainer.className = 'stats-section';
+    
+    const dailyBreakdownTitle = document.createElement('h3');
+    dailyBreakdownTitle.textContent = 'Daily Breakdown';
+    dailyBreakdownContainer.appendChild(dailyBreakdownTitle);
+    
+    // Create chart container
+    const chartContainer = document.createElement('div');
+    chartContainer.className = 'stats-chart-container';
+    
+    // Create chart
+    const chartCanvas = document.createElement('canvas');
+    chartCanvas.id = 'dailySalesChart';
+    chartCanvas.style.width = '100%';
+    chartCanvas.style.height = '300px';
+    chartContainer.appendChild(chartCanvas);
+    
+    dailyBreakdownContainer.appendChild(chartContainer);
+    
+    // Create a table for daily data
+    const table = document.createElement('table');
+    table.className = 'stats-table';
+    
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            <th>Day</th>
+            <th>Orders</th>
+            <th>Pizzas</th>
+            <th>Revenue</th>
+            <th>Top Pizza</th>
+        </tr>
+    `;
+    table.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    
+    // Sort days numerically
+    const sortedDays = Object.keys(ordersByDay).sort((a, b) => parseInt(a) - parseInt(b));
+    
+    // Prepare data for chart
+    const chartLabels = [];
+    const orderData = [];
+    const revenueData = [];
+    const pizzaData = [];
+    
+    sortedDays.forEach(day => {
+        const dayData = ordersByDay[day];
+        
+        // Add to chart data
+        chartLabels.push(day);
+        orderData.push(dayData.orders);
+        revenueData.push(dayData.revenue);
+        pizzaData.push(dayData.pizzas);
+        
+        // Find top pizza for this day
+        let topPizza = { type: 'None', count: 0 };
+        const pizzasForDay = pizzaTypesByDay[day];
+        
+        for (const [type, count] of Object.entries(pizzasForDay)) {
+            if (count > topPizza.count) {
+                topPizza = { type, count };
+            }
+        }
+        
+        // Create table row
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${day}</td>
+            <td>${dayData.orders}</td>
+            <td>${dayData.pizzas}</td>
+            <td>${formatCurrency(dayData.revenue)}</td>
+            <td>${topPizza.type} (${topPizza.count})</td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+    
+    table.appendChild(tbody);
+    dailyBreakdownContainer.appendChild(table);
+    
+    statsContainer.appendChild(dailyBreakdownContainer);
+    
+    // Add chart script to visualize the data
+    const chartScript = document.createElement('script');
+    chartScript.innerHTML = `
+        // Wait for the canvas to be in the DOM
+        setTimeout(() => {
+            const canvas = document.getElementById('dailySalesChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ${JSON.stringify(chartLabels)},
+                    datasets: [
+                        {
+                            label: 'Pizzas',
+                            data: ${JSON.stringify(pizzaData)},
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Orders',
+                            data: ${JSON.stringify(orderData)},
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }, 100);
+    `;
+    
+    statsContainer.appendChild(chartScript);
+    
+    ordersContainer.appendChild(statsContainer);
+    updateLastUpdated();
+}
+
 // Helper function to create a statistics card
 function createStatCard(title, value, icon, extraClass = '') {
     const card = document.createElement('div');
@@ -819,6 +1160,9 @@ function createStatCard(title, value, icon, extraClass = '') {
 
 // Fetch orders from Firestore
 function fetchOrders() {
+    debugLog('Attempting to fetch orders...');
+    
+    // Show loading indicator
     ordersContainer.innerHTML = `
         <div class="loading">
             <div class="spinner"></div>
@@ -826,33 +1170,72 @@ function fetchOrders() {
         </div>
     `;
     
+    // Check if Firebase is properly initialized
+    if (typeof firebase === 'undefined') {
+        debugLog('Firebase SDK not loaded when trying to fetch orders', 'error');
+        ordersContainer.innerHTML = `
+            <div class="no-orders">
+                <h3>⚠️ Firebase Not Loaded</h3>
+                <p>Firebase SDK is not loaded. Please check your internet connection and refresh the page.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (!db) {
+        debugLog('Firestore database not initialized when trying to fetch orders', 'error');
+        ordersContainer.innerHTML = `
+            <div class="no-orders">
+                <h3>⚠️ Database Not Initialized</h3>
+                <p>Firestore database is not properly initialized. Please check console for errors.</p>
+                <button onclick="location.reload()">Retry</button>
+            </div>
+        `;
+        return;
+    }
+    
     try {
+        debugLog('Creating Firestore query to fetch orders');
         const query = db.collection('orders')
             .orderBy('orderTime', 'desc')
             .limit(100); // Increased limit to 100 orders
         
+        debugLog('Executing Firestore query...');
         query.get().then(snapshot => {
-            console.log('Orders fetched successfully:', snapshot.size);
+            debugLog(`Orders fetched successfully: ${snapshot.size} orders retrieved`);
             orders = snapshot.docs;
             const filteredOrders = filterOrdersByStatus(currentTab);
             displayOrders(filteredOrders);
         }).catch(error => {
-            console.error('Error fetching orders:', error);
-            ordersContainer.innerHTML = `
-                <div class="no-orders">
-                    <h3>⚠️ Error Loading Orders</h3>
-                    <p>${error.message}</p>
-                    <p>This may be due to Firebase security rules. If you're viewing on GitHub Pages, you need to update your Firestore rules to allow access from this domain.</p>
-                    <code>Error code: ${error.code || 'unknown'}</code>
-                </div>
-            `;
+            debugLog(`Error fetching orders: ${error.message}`, 'error');
+            if (error.code === 'permission-denied') {
+                debugLog('Firebase permission denied error - likely a security rules issue', 'error');
+                ordersContainer.innerHTML = `
+                    <div class="no-orders">
+                        <h3>⚠️ Access Denied</h3>
+                        <p>Firebase security rules are preventing access to the database.</p>
+                        <p>If you're viewing this on GitHub Pages, please update your Firestore security rules to allow access from this domain (${window.location.hostname}).</p>
+                        <p>Error details: ${error.message}</p>
+                    </div>
+                `;
+            } else {
+                ordersContainer.innerHTML = `
+                    <div class="no-orders">
+                        <h3>⚠️ Error Loading Orders</h3>
+                        <p>${error.message}</p>
+                        <p>Error code: ${error.code || 'unknown'}</p>
+                        <button onclick="fetchOrders()">Try Again</button>
+                    </div>
+                `;
+            }
         });
     } catch (e) {
-        console.error('Fatal error accessing Firestore:', e);
+        debugLog(`Fatal error accessing Firestore: ${e.message}`, 'error');
         ordersContainer.innerHTML = `
             <div class="no-orders">
                 <h3>⚠️ Connection Error</h3>
                 <p>Could not connect to Firebase database. Error: ${e.message}</p>
+                <button onclick="location.reload()">Reload Page</button>
             </div>
         `;
     }

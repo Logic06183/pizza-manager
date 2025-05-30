@@ -8,8 +8,50 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="stats-styles.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Updated Firebase SDK versions -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Chart.js for monthly stats visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Add debug styles -->
+    <style>
+        .debug-console {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 10px;
+            z-index: 1000;
+            border-top: 1px solid #444;
+        }
+        .debug-console.show {
+            display: block;
+        }
+        .debug-line {
+            margin: 2px 0;
+            line-height: 1.2;
+        }
+        .debug-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -29,7 +71,8 @@
                 <button class="tab-btn" data-tab="preparing">Preparing</button>
                 <button class="tab-btn" data-tab="ready">Ready</button>
                 <button class="tab-btn" data-tab="done">Completed</button>
-                <button class="tab-btn" data-tab="stats">📊 Stats</button>
+                <button class="tab-btn" data-tab="stats">📊 Daily Stats</button>
+                <button class="tab-btn" data-tab="monthly">📅 Monthly Stats</button>
             </nav>
         </header>
 
@@ -57,7 +100,19 @@
             <p>Pizza Manager v1.0 • Made with ❤️</p>
         </footer>
     </div>
+    
+    <!-- Debug console for troubleshooting -->
+    <div id="debugConsole" class="debug-console"></div>
+    <button id="debugToggle" class="debug-toggle">Show Debug</button>
 
     <script src="app.js"></script>
+    <script>
+        // Debug console toggle functionality
+        document.getElementById('debugToggle').addEventListener('click', function() {
+            const console = document.getElementById('debugConsole');
+            console.classList.toggle('show');
+            this.textContent = console.classList.contains('show') ? 'Hide Debug' : 'Show Debug';
+        });
+    </script>
 </body>
 </html>
