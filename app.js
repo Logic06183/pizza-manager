@@ -1596,6 +1596,388 @@ function displayMonthlyStatistics(allOrders) {
             }, 100);
         `;
         
+        // Add additional visualizations
+        
+        // 1. Pizza Types Distribution (Pie Chart)
+        const pizzaTypesContainer = document.createElement('div');
+        pizzaTypesContainer.className = 'stats-section';
+        
+        const pizzaTypesTitle = document.createElement('h3');
+        pizzaTypesTitle.textContent = 'Pizza Types Distribution';
+        pizzaTypesContainer.appendChild(pizzaTypesTitle);
+        
+        const pizzaChartContainer = document.createElement('div');
+        pizzaChartContainer.className = 'visualization-container';
+        
+        // Create chart and table side by side
+        const pizzaChartWrapper = document.createElement('div');
+        pizzaChartWrapper.className = 'chart-wrapper';
+        
+        const pizzaChartCanvas = document.createElement('canvas');
+        pizzaChartCanvas.id = 'monthlyPizzaTypesChart';
+        pizzaChartWrapper.appendChild(pizzaChartCanvas);
+        
+        pizzaChartContainer.appendChild(pizzaChartWrapper);
+        
+        // Create a table for pizza types
+        const pizzaTable = document.createElement('div');
+        pizzaTable.className = 'data-table';
+        
+        const pizzaTableHeader = document.createElement('div');
+        pizzaTableHeader.className = 'table-header';
+        pizzaTableHeader.innerHTML = '<div>Pizza Type</div><div>Quantity</div><div>Percentage</div>';
+        pizzaTable.appendChild(pizzaTableHeader);
+        
+        // Prepare data for pizza types pie chart
+        const pizzaChartData = [];
+        const pizzaChartColors = [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 206, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(199, 199, 199, 0.8)',
+            'rgba(83, 102, 255, 0.8)',
+        ];
+        
+        // Sort pizza types by quantity
+        const sortedPizzaTypes = Object.entries(pizzaTypes)
+            .sort((a, b) => b[1] - a[1]);
+        
+        // Limit to top 8 types, group others as "Other"
+        let otherCount = 0;
+        sortedPizzaTypes.forEach((entry, index) => {
+            const [type, count] = entry;
+            const percentage = (count / monthlyTotalPizzas * 100).toFixed(1);
+            
+            // Create table row for each pizza type
+            const tableRow = document.createElement('div');
+            tableRow.className = 'table-row';
+            tableRow.innerHTML = `<div>${type}</div><div>${count}</div><div>${percentage}%</div>`;
+            pizzaTable.appendChild(tableRow);
+            
+            // Add to chart data (top 8 or group as Other)
+            if (index < 8) {
+                pizzaChartData.push({
+                    label: type,
+                    count: count,
+                    color: pizzaChartColors[index % pizzaChartColors.length]
+                });
+            } else {
+                otherCount += count;
+            }
+        });
+        
+        // Add "Other" category if needed
+        if (otherCount > 0) {
+            const percentage = (otherCount / monthlyTotalPizzas * 100).toFixed(1);
+            const tableRow = document.createElement('div');
+            tableRow.className = 'table-row';
+            tableRow.innerHTML = `<div>Other</div><div>${otherCount}</div><div>${percentage}%</div>`;
+            pizzaTable.appendChild(tableRow);
+            
+            pizzaChartData.push({
+                label: 'Other',
+                count: otherCount,
+                color: 'rgba(169, 169, 169, 0.8)'
+            });
+        }
+        
+        pizzaChartContainer.appendChild(pizzaTable);
+        pizzaTypesContainer.appendChild(pizzaChartContainer);
+        statsContent.appendChild(pizzaTypesContainer);
+        
+        // 2. Order Status Breakdown (Bar Chart)
+        const orderStatusContainer = document.createElement('div');
+        orderStatusContainer.className = 'stats-section';
+        
+        const orderStatusTitle = document.createElement('h3');
+        orderStatusTitle.textContent = 'Order Status Breakdown';
+        orderStatusContainer.appendChild(orderStatusTitle);
+        
+        const statusChartContainer = document.createElement('div');
+        statusChartContainer.className = 'visualization-container';
+        
+        const statusChartWrapper = document.createElement('div');
+        statusChartWrapper.className = 'chart-wrapper';
+        
+        const statusChartCanvas = document.createElement('canvas');
+        statusChartCanvas.id = 'monthlyOrderStatusChart';
+        statusChartWrapper.appendChild(statusChartCanvas);
+        
+        statusChartContainer.appendChild(statusChartWrapper);
+        
+        // Count orders by status
+        const orderStatusCounts = {};
+        monthlyOrders.forEach(order => {
+            const data = order.data();
+            const status = data.status ? data.status.toLowerCase() : 'unknown';
+            
+            if (!orderStatusCounts[status]) {
+                orderStatusCounts[status] = 0;
+            }
+            orderStatusCounts[status]++;
+        });
+        
+        // Create table for order status
+        const statusTable = document.createElement('div');
+        statusTable.className = 'data-table';
+        
+        const statusTableHeader = document.createElement('div');
+        statusTableHeader.className = 'table-header';
+        statusTableHeader.innerHTML = '<div>Status</div><div>Count</div><div>Percentage</div>';
+        statusTable.appendChild(statusTableHeader);
+        
+        // Prepare data for order status chart
+        const statusChartData = [];
+        const statusChartColors = {
+            'delivered': 'rgba(40, 167, 69, 0.8)',
+            'preparing': 'rgba(255, 193, 7, 0.8)',
+            'pending': 'rgba(0, 123, 255, 0.8)',
+            'cancelled': 'rgba(220, 53, 69, 0.8)',
+            'unknown': 'rgba(108, 117, 125, 0.8)'
+        };
+        
+        Object.entries(orderStatusCounts).forEach(([status, count]) => {
+            const percentage = (count / monthlyTotalOrders * 100).toFixed(1);
+            
+            // Add to table
+            const tableRow = document.createElement('div');
+            tableRow.className = 'table-row';
+            tableRow.innerHTML = `<div>${status.charAt(0).toUpperCase() + status.slice(1)}</div><div>${count}</div><div>${percentage}%</div>`;
+            statusTable.appendChild(tableRow);
+            
+            // Add to chart data
+            statusChartData.push({
+                label: status.charAt(0).toUpperCase() + status.slice(1),
+                count: count,
+                color: statusChartColors[status] || 'rgba(108, 117, 125, 0.8)'
+            });
+        });
+        
+        statusChartContainer.appendChild(statusTable);
+        orderStatusContainer.appendChild(statusChartContainer);
+        statsContent.appendChild(orderStatusContainer);
+        
+        // 3. Hourly Order Distribution (Line Chart)
+        const hourlyContainer = document.createElement('div');
+        hourlyContainer.className = 'stats-section';
+        
+        const hourlyTitle = document.createElement('h3');
+        hourlyTitle.textContent = 'Hourly Order Distribution';
+        hourlyContainer.appendChild(hourlyTitle);
+        
+        const hourlyChartContainer = document.createElement('div');
+        hourlyChartContainer.className = 'chart-container';
+        
+        const hourlyChartCanvas = document.createElement('canvas');
+        hourlyChartCanvas.id = 'monthlyHourlyChart';
+        hourlyChartContainer.appendChild(hourlyChartCanvas);
+        
+        hourlyContainer.appendChild(hourlyChartContainer);
+        
+        // Count orders by hour
+        const hourlyOrderCounts = Array(24).fill(0);
+        
+        monthlyOrders.forEach(order => {
+            const data = order.data();
+            const orderTime = data.orderTime && typeof data.orderTime === 'string' ? 
+                new Date(data.orderTime) : 
+                (data.orderTime && data.orderTime.toDate ? data.orderTime.toDate() : null);
+            
+            if (orderTime) {
+                const hour = orderTime.getHours();
+                hourlyOrderCounts[hour]++;
+            }
+        });
+        
+        statsContent.appendChild(hourlyContainer);
+        
+        // 4. Ingredients Usage (Horizontal Bar Chart)
+        const ingredientsContainer = document.createElement('div');
+        ingredientsContainer.className = 'stats-section';
+        
+        const ingredientsTitle = document.createElement('h3');
+        ingredientsTitle.textContent = 'Ingredients Usage';
+        ingredientsContainer.appendChild(ingredientsTitle);
+        
+        const ingredientsChartContainer = document.createElement('div');
+        ingredientsChartContainer.className = 'visualization-container';
+        
+        const ingredientsChartWrapper = document.createElement('div');
+        ingredientsChartWrapper.className = 'chart-wrapper';
+        
+        const ingredientsChartCanvas = document.createElement('canvas');
+        ingredientsChartCanvas.id = 'monthlyIngredientsChart';
+        ingredientsChartWrapper.appendChild(ingredientsChartCanvas);
+        
+        ingredientsChartContainer.appendChild(ingredientsChartWrapper);
+        
+        // Count ingredients
+        const ingredientCounts = {};
+        
+        monthlyOrders.forEach(order => {
+            const data = order.data();
+            if (data.pizzas && Array.isArray(data.pizzas)) {
+                data.pizzas.forEach(pizza => {
+                    const quantity = pizza.quantity || 1;
+                    const pizzaType = pizza.pizzaType || 'Unknown';
+                    
+                    // Get ingredients for this pizza type from the global pizzaIngredients object
+                    if (pizzaIngredients[pizzaType]) {
+                        pizzaIngredients[pizzaType].forEach(ingredient => {
+                            if (!ingredientCounts[ingredient.name]) {
+                                ingredientCounts[ingredient.name] = 0;
+                            }
+                            ingredientCounts[ingredient.name] += ingredient.amount * quantity;
+                        });
+                    }
+                });
+            }
+        });
+        
+        // Create table for ingredients
+        const ingredientsTable = document.createElement('div');
+        ingredientsTable.className = 'data-table';
+        
+        const ingredientsTableHeader = document.createElement('div');
+        ingredientsTableHeader.className = 'table-header';
+        ingredientsTableHeader.innerHTML = '<div>Ingredient</div><div>Amount Used</div>';
+        ingredientsTable.appendChild(ingredientsTableHeader);
+        
+        // Sort ingredients by usage and limit to top 10
+        const sortedIngredients = Object.entries(ingredientCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
+        
+        sortedIngredients.forEach(([ingredient, amount]) => {
+            const tableRow = document.createElement('div');
+            tableRow.className = 'table-row';
+            tableRow.innerHTML = `<div>${ingredient}</div><div>${amount.toFixed(1)} units</div>`;
+            ingredientsTable.appendChild(tableRow);
+        });
+        
+        ingredientsChartContainer.appendChild(ingredientsTable);
+        ingredientsContainer.appendChild(ingredientsChartContainer);
+        statsContent.appendChild(ingredientsContainer);
+        
+        // Add all chart scripts at once
+        const allChartsScript = document.createElement('script');
+        allChartsScript.innerHTML = `
+            setTimeout(() => {
+                // Pizza Types Pie Chart
+                const pizzaCtx = document.getElementById('monthlyPizzaTypesChart').getContext('2d');
+                new Chart(pizzaCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: ${JSON.stringify(pizzaChartData.map(item => item.label))},
+                        datasets: [{
+                            data: ${JSON.stringify(pizzaChartData.map(item => item.count))},
+                            backgroundColor: ${JSON.stringify(pizzaChartData.map(item => item.color))},
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            }
+                        }
+                    }
+                });
+                
+                // Order Status Bar Chart
+                const statusCtx = document.getElementById('monthlyOrderStatusChart').getContext('2d');
+                new Chart(statusCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ${JSON.stringify(statusChartData.map(item => item.label))},
+                        datasets: [{
+                            label: 'Order Count',
+                            data: ${JSON.stringify(statusChartData.map(item => item.count))},
+                            backgroundColor: ${JSON.stringify(statusChartData.map(item => item.color))},
+                            borderColor: ${JSON.stringify(statusChartData.map(item => item.color).map(color => color.replace('0.8', '1')))},
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Hourly Distribution Line Chart
+                const hourlyCtx = document.getElementById('monthlyHourlyChart').getContext('2d');
+                new Chart(hourlyCtx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 24}, (_, i) => i + ':00'),
+                        datasets: [{
+                            label: 'Orders',
+                            data: ${JSON.stringify(hourlyOrderCounts)},
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Hour of Day'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Ingredients Horizontal Bar Chart
+                const ingredientsCtx = document.getElementById('monthlyIngredientsChart').getContext('2d');
+                new Chart(ingredientsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ${JSON.stringify(sortedIngredients.map(item => item[0]))},
+                        datasets: [{
+                            label: 'Amount Used',
+                            data: ${JSON.stringify(sortedIngredients.map(item => item[1]))},
+                            backgroundColor: 'rgba(153, 102, 255, 0.7)',
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        scales: {
+                            x: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }, 100);
+        `;
+        
+        statsContent.appendChild(allChartsScript);
         statsContent.appendChild(chartScript);
     };
     
