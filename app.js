@@ -580,7 +580,16 @@ function filterOrdersByStatus(status) {
         return orders; // All orders
     }
     
-    // Filter by status
+    // Special case: include 'pending' orders in 'preparing' tab
+    if (status === 'preparing') {
+        return orders.filter(order => {
+            const data = order.data();
+            const orderStatus = data.status ? data.status.toLowerCase() : '';
+            return orderStatus === 'preparing' || orderStatus === 'pending';
+        });
+    }
+    
+    // Filter by status for other tabs
     return orders.filter(order => {
         const data = order.data();
         return data.status && data.status.toLowerCase() === status;
